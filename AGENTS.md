@@ -86,19 +86,38 @@ internal/
 
 ## Build/Test/Lint Commands
 
-- **Build**: `go build .` or `go run .`
-- **Test**: `task test` or `go test ./...` (run single test:
-  `go test ./internal/llm/prompt -run TestGetContextFromPaths`)
+The build/test/lint stack is `nix` + `just` + `conformist` (see `justfile`,
+`flake.nix`). The hermetic gate is `just validate` (= `nix flake check`),
+which is what the pre-merge hook runs. Devshell loops are the fast iteration
+path.
+
+> NOTE (trapeze#3, blocked on amarbel-llc/igloo#40): a dependency
+> (charm.land/fantasy) requires go 1.26.4, which nixpkgs has not packaged
+> yet, so the flake pins go 1.26.3. The nix *sandbox* lanes (the `-nix`
+> recipes) tolerate this and are green, but the host-side devshell `go`
+> (1.26.3) refuses the dep, so `go build .` / `just build-go` / `test-go` /
+> `lint-go` / `run-dev` DO NOT WORK until go 1.26.4 lands. Use the `-nix`
+> lanes meanwhile.
+
+- **Gate (all checks)**: `just validate` (= `nix flake check`: conformist +
+  go-test + go-lint, in the build sandbox)
+- **Build**: `just build-nix` (= `nix build`; binary at `./result/bin/crush`)
+- **Test**: `just test-go-nix` (full unit suite in the sandbox). Devshell
+  loop: `just test-go` (`just test-go ./internal/config/` narrows to one
+  package). The VCR agent suite is separate: `just test-agent`.
 - **Update Golden Files**: `go test ./... -update` (regenerates `.golden`
   files when test output changes)
   - Update specific package:
     `go test ./internal/tui/components/core -update` (in this case,
     we're updating "core")
-- **Lint**: `task lint:fix`
-- **Format**: `task fmt` (`gofumpt -w .`)
-- **Modernize**: `task modernize` (runs `modernize` which makes code
-  simplifications)
-- **Dev**: `task dev` (runs with profiling enabled)
+- **Lint**: `just lint-go` (golangci-lint) and `just lint-fmt` (read-only
+  conformist drift gate)
+- **Format**: `just codemod-fmt` (= `nix fmt`: conformist runs goimports +
+  gofumpt + nixfmt + shfmt + prettier in place)
+- **Dev**: `just run-profile` (runs with pprof profiling enabled)
+- **Codegen**: `just build-sqlc` / `build-schema` / `build-swagger` /
+  `build-hyper`; regenerate the nix module set with `just update-gomod2nix`
+  after changing `go.mod`
 
 ## Code Style Guidelines
 
@@ -128,7 +147,8 @@ internal/
   permissions.
 - **Log messages**: Log messages must start with a capital letter (e.g.,
   "Failed to save session" not "failed to save session").
-  - This is enforced by `task lint:log` which runs as part of `task lint`.
+  - This is enforced by the conformist `[linter.log-capitalization]` check,
+    which runs as part of `just lint-fmt` / `nix flake check`.
 - **Comments**: End comments in periods unless comments are at the end of the
   line.
 
@@ -162,8 +182,8 @@ func TestYourFunction(t *testing.T) {
   - First, try `gofumpt -w .`.
   - If `gofumpt` is not available, use `goimports`.
   - If `goimports` is not available, use `gofmt`.
-  - You can also use `task fmt` to run `gofumpt -w .` on the entire project,
-    as long as `gofumpt` is on the `PATH`.
+  - You can also use `just codemod-fmt` (= `nix fmt`) to format the entire
+    project via conformist (goimports + gofumpt + nixfmt + shfmt + prettier).
 
 ## Comments
 

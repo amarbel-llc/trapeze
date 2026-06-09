@@ -1,6 +1,6 @@
 module github.com/charmbracelet/crush
 
-go 1.26.4
+go 1.26.3
 
 require (
 	charm.land/bubbles/v2 v2.1.0

@@ -1,0 +1,8 @@
+# vim: ft=toml
+
+[hooks]
+# The pre-merge gate is the default `just` recipe: `default: validate build
+# test`, which runs `nix flake check` (conformist + go-test + go-vet + go-lint)
+# plus `nix build`. This is trapeze's CI lane — spinclass runs it before every
+# merge-this-session.
+pre-merge = "just"
