@@ -562,6 +562,30 @@ func (h *HookConfig) TimeoutDuration() time.Duration {
 	return time.Duration(h.Timeout) * time.Second
 }
 
+// XMPP holds the configuration for trapeze's XMPP chat mode. When present
+// (non-nil), trapeze connects to the given XMPP account at startup instead of
+// initializing the LLM coder agent, and the chat UI is backed by XMPP message
+// stanzas. Vertical-slice surface: a single 1:1 conversation with Contact.
+type XMPP struct {
+	// JID is the user's own Jabber ID, e.g. "alice@example.net".
+	JID string `json:"jid,omitempty" jsonschema:"description=The user's own XMPP JID (e.g. alice@example.net)"`
+	// Password is the account password used for SASL authentication.
+	Password string `json:"password,omitempty" jsonschema:"description=XMPP account password (SASL)"`
+	// Server optionally overrides the TCP dial target as host:port (e.g.
+	// "localhost:5222"). When empty, the server is resolved from the JID
+	// domain via SRV records.
+	Server string `json:"server,omitempty" jsonschema:"description=Optional host:port server override; defaults to SRV resolution of the JID domain"`
+	// Contact is the default peer JID for an outbound conversation started
+	// from a generic (non-JID) session, e.g. "bob@example.net". Replies to a
+	// per-peer session created by an incoming message go to that peer
+	// regardless of this value; Contact only seeds a freshly-started thread.
+	Contact string `json:"contact,omitempty" jsonschema:"description=Default peer JID for new outbound conversations (e.g. bob@example.net)"`
+	// Insecure skips TLS certificate verification. Needed for dev servers
+	// with self-signed certs (e.g. a local Prosody); do not enable against
+	// real servers.
+	Insecure bool `json:"insecure,omitempty" jsonschema:"description=Skip TLS certificate verification (dev servers with self-signed certs only)"`
+}
+
 // Config holds the configuration for crush.
 type Config struct {
 	Schema string `json:"$schema,omitempty"`
@@ -580,6 +604,9 @@ type Config struct {
 	LSP LSPs `json:"lsp,omitempty" jsonschema:"description=Language Server Protocol configurations"`
 
 	Options *Options `json:"options,omitempty" jsonschema:"description=General application options"`
+
+	// XMPP, when set, switches trapeze into XMPP chat mode (see XMPP type).
+	XMPP *XMPP `json:"xmpp,omitempty" jsonschema:"description=XMPP chat-mode account configuration; when set, trapeze runs as an XMPP client instead of an LLM agent"`
 
 	Permissions *Permissions `json:"permissions,omitempty" jsonschema:"description=Permission settings for tool usage"`
 

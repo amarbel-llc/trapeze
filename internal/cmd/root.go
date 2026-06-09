@@ -40,6 +40,7 @@ import (
 	ui "github.com/charmbracelet/crush/internal/ui/model"
 	"github.com/charmbracelet/crush/internal/version"
 	"github.com/charmbracelet/crush/internal/workspace"
+	"github.com/charmbracelet/crush/internal/xmpp"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/x/exp/charmtone"
@@ -120,6 +121,15 @@ crush --continue
 				return err
 			}
 			sessionID = sess.ID
+		}
+
+		// In XMPP mode, open directly on the conversation's bound session so
+		// inbound (persisted to that session) and outbound (sendMessage) stay
+		// unified instead of sendMessage spawning a fresh session.
+		if sessionID == "" {
+			if aw, ok := ws.(*workspace.AppWorkspace); ok {
+				sessionID = aw.XMPPSessionID()
+			}
 		}
 
 		event.AppInitialized()
@@ -314,6 +324,27 @@ func setupLocalWorkspace(cmd *cobra.Command) (workspace.Workspace, func(), error
 
 	ws := workspace.NewAppWorkspace(appInstance, store)
 	cleanup := func() { appInstance.Shutdown() }
+
+	// XMPP chat mode: connect to the configured account. Each peer JID gets
+	// its own session (resolved lazily by the workspace), so inbound messages
+	// route to per-sender conversations and outbound replies to the active
+	// session's peer. See internal/xmpp and AppWorkspace's JID→session resolver.
+	if cfg.XMPP != nil {
+		// HandleIncomingXMPP runs on the XMPP read goroutine; it only writes to
+		// the message store (which publishes the pubsub event the TUI renders),
+		// never back into the XMPP client (which would deadlock).
+		client, err := xmpp.Connect(ctx, cfg.XMPP.JID, cfg.XMPP.Password, cfg.XMPP.Server, cfg.XMPP.Insecure, ws.HandleIncomingXMPP)
+		if err != nil {
+			cleanup()
+			return nil, nil, fmt.Errorf("xmpp: connect: %w", err)
+		}
+		ws.SetXMPP(client)
+		cleanup = func() {
+			_ = client.Close()
+			appInstance.Shutdown()
+		}
+	}
+
 	return ws, cleanup, nil
 }
 

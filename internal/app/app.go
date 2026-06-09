@@ -141,6 +141,13 @@ func New(ctx context.Context, conn *sql.DB, store *config.ConfigStore, skillsMgr
 		slog.Warn("No agent configuration found")
 		return app, nil
 	}
+	// XMPP chat mode runs no LLM coder agent; the workspace's AgentRun sends
+	// chat stanzas instead. Skip coordinator init so a launch without a usable
+	// provider doesn't fail here.
+	if cfg.XMPP != nil {
+		slog.Info("XMPP mode enabled; skipping coder agent initialization")
+		return app, nil
+	}
 	if err := app.InitCoderAgent(ctx); err != nil {
 		return nil, fmt.Errorf("failed to initialize coder agent: %w", err)
 	}

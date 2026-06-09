@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"sync"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -19,6 +21,7 @@ import (
 	"github.com/charmbracelet/crush/internal/permission"
 	"github.com/charmbracelet/crush/internal/session"
 	"github.com/charmbracelet/crush/internal/skills"
+	"github.com/charmbracelet/crush/internal/xmpp"
 )
 
 // AppWorkspace implements the Workspace interface by delegating
@@ -27,15 +30,111 @@ import (
 type AppWorkspace struct {
 	app   *app.App
 	store *config.ConfigStore
+
+	// xmpp, when non-nil, puts the workspace in XMPP chat mode: AgentRun
+	// sends a chat stanza (and persists the outgoing message) instead of
+	// running the LLM coordinator, and AgentIsReady reports the XMPP session
+	// as ready. See SetXMPP.
+	xmpp *xmpp.Client
+
+	// xmppSessions maps a peer's bare JID to the session.Session that holds
+	// that 1:1 conversation. Each peer is its own session (Title = bare JID)
+	// so the TUI session-switcher presents them as distinct DM threads.
+	// Guarded by xmppMu because inbound (XMPP serve goroutine) and outbound
+	// (TUI goroutine) both resolve sessions through it.
+	xmppMu       sync.Mutex
+	xmppSessions map[string]string
 }
 
 // NewAppWorkspace creates a new AppWorkspace wrapping the given app
 // and config store.
 func NewAppWorkspace(a *app.App, store *config.ConfigStore) *AppWorkspace {
 	return &AppWorkspace{
-		app:   a,
-		store: store,
+		app:          a,
+		store:        store,
+		xmppSessions: make(map[string]string),
 	}
+}
+
+// SetXMPP puts the workspace into XMPP chat mode with the given connected
+// client. It pre-seeds the JID→session cache from existing sessions (whose
+// Title is the peer JID) so conversations survive restarts.
+func (w *AppWorkspace) SetXMPP(client *xmpp.Client) {
+	sessions, err := w.app.Sessions.List(context.Background())
+	if err != nil {
+		slog.Warn("XMPP: failed to list sessions for JID cache seed", "error", err)
+	}
+	w.xmppMu.Lock()
+	defer w.xmppMu.Unlock()
+	w.xmpp = client
+	for _, s := range sessions {
+		// Only sessions whose title is a peer JID are XMPP conversations;
+		// skip leftover non-JID titles (e.g. old "New Session" rows) so they
+		// can't be mistaken for a peer's session.
+		if xmpp.ValidJID(s.Title) {
+			w.xmppSessions[s.Title] = s.ID
+		}
+	}
+}
+
+// resolveXMPPSession returns the session bound to peerJID, creating one
+// (Title = peerJID) the first time a peer is seen. Safe for concurrent use.
+func (w *AppWorkspace) resolveXMPPSession(ctx context.Context, peerJID string) (string, error) {
+	w.xmppMu.Lock()
+	defer w.xmppMu.Unlock()
+	if id, ok := w.xmppSessions[peerJID]; ok {
+		return id, nil
+	}
+	sess, err := w.app.Sessions.Create(ctx, peerJID)
+	if err != nil {
+		return "", err
+	}
+	w.xmppSessions[peerJID] = sess.ID
+	return sess.ID, nil
+}
+
+// HandleIncomingXMPP routes an incoming chat message into the session for its
+// sender (creating that session on first contact) and persists it as the peer
+// side of the conversation. Called from the XMPP serve goroutine.
+func (w *AppWorkspace) HandleIncomingXMPP(from, body string) {
+	// Ignore messages with no/empty or malformed sender JID (server
+	// announcements, carbons without a from, etc.) — routing them by JID would
+	// create an orphan Title="" session that never surfaces in the TUI.
+	if !xmpp.ValidJID(from) {
+		slog.Warn("XMPP: dropping incoming message with invalid sender", "from", from)
+		return
+	}
+	ctx := context.Background()
+	sessionID, err := w.resolveXMPPSession(ctx, from)
+	if err != nil {
+		slog.Error("XMPP: failed to resolve session for incoming message", "from", from, "error", err)
+		return
+	}
+	if _, err := w.app.Messages.Create(ctx, sessionID, message.CreateMessageParams{
+		Role:  message.Assistant,
+		Parts: []message.ContentPart{message.TextContent{Text: body}},
+	}); err != nil {
+		slog.Error("XMPP: failed to persist incoming message", "from", from, "error", err)
+	}
+}
+
+// XMPPSessionID returns a session to open the TUI on initially: the most
+// recently updated peer (JID-titled) session, or "" if there are none yet
+// (landing screen). Non-JID sessions (e.g. leftover coder sessions) are
+// skipped so XMPP mode never opens on an unrelated thread.
+func (w *AppWorkspace) XMPPSessionID() string {
+	sessions, err := w.app.Sessions.List(context.Background())
+	if err != nil {
+		return ""
+	}
+	// Sessions.List is ordered most-recent-first (see session service); the
+	// first JID-titled one is the most-recent peer conversation.
+	for _, s := range sessions {
+		if xmpp.ValidJID(s.Title) {
+			return s.ID
+		}
+	}
+	return ""
 }
 
 // -- Sessions --
@@ -98,6 +197,54 @@ func (w *AppWorkspace) ListAllUserMessages(ctx context.Context) ([]message.Messa
 // -- Agent --
 
 func (w *AppWorkspace) AgentRun(ctx context.Context, sessionID, prompt string, attachments ...message.Attachment) error {
+	// XMPP mode: send to the active conversation's peer and persist our side.
+	// The peer is the session Title when it is a JID (i.e. a real conversation,
+	// inbound-created or already retitled). For a generic session (a fresh
+	// "New Session" the TUI made on the landing screen) fall back to the
+	// configured default contact and retitle the session to that JID so it
+	// becomes a proper per-peer thread. The LLM coordinator is bypassed.
+	if w.xmpp != nil {
+		sess, err := w.app.Sessions.Get(ctx, sessionID)
+		if err != nil {
+			return fmt.Errorf("xmpp: look up session: %w", err)
+		}
+		peerJID := sess.Title
+		needsRetitle := false
+		if !xmpp.ValidJID(peerJID) {
+			cfg := w.store.Config()
+			if cfg.XMPP == nil || cfg.XMPP.Contact == "" {
+				return errors.New("xmpp: this conversation has no peer JID and no default xmpp.contact is configured")
+			}
+			peerJID = cfg.XMPP.Contact
+			needsRetitle = true
+		}
+		// Cache the JID→session mapping BEFORE the (best-effort) retitle, so a
+		// concurrent inbound reply from this peer on the serve goroutine
+		// resolves to this same session instead of racing the Rename and
+		// creating a duplicate.
+		w.xmppMu.Lock()
+		w.xmppSessions[peerJID] = sessionID
+		w.xmppMu.Unlock()
+		if needsRetitle {
+			// Retitle the generic session to the peer JID so future restarts
+			// recover the mapping and the switcher shows the contact.
+			if err := w.app.Sessions.Rename(ctx, sessionID, peerJID); err != nil {
+				slog.Warn("XMPP: failed to retitle session to peer JID", "error", err)
+			}
+		}
+		if _, err := w.app.Messages.Create(ctx, sessionID, message.CreateMessageParams{
+			Role:  message.User,
+			Parts: []message.ContentPart{message.TextContent{Text: prompt}},
+		}); err != nil {
+			return fmt.Errorf("persist outgoing message: %w", err)
+		}
+		if err := w.xmpp.Send(ctx, peerJID, prompt); err != nil {
+			slog.Error("XMPP send failed", "to", peerJID, "error", err)
+			return err
+		}
+		return nil
+	}
+
 	if w.app.AgentCoordinator == nil {
 		return errors.New("agent coordinator not initialized")
 	}
@@ -137,6 +284,11 @@ func (w *AppWorkspace) AgentModel() AgentModel {
 }
 
 func (w *AppWorkspace) AgentIsReady() bool {
+	// In XMPP mode the connected session is what "ready" means; there is no
+	// coordinator. This gates ui.sendMessage, so it must be true to send.
+	if w.xmpp != nil {
+		return true
+	}
 	return w.app.AgentCoordinator != nil
 }
 
@@ -172,6 +324,10 @@ func (w *AppWorkspace) UpdateAgentModel(ctx context.Context) error {
 }
 
 func (w *AppWorkspace) InitCoderAgent(ctx context.Context) error {
+	// No LLM agent in XMPP mode.
+	if w.xmpp != nil {
+		return nil
+	}
 	return w.app.InitCoderAgent(ctx)
 }
 

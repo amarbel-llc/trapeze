@@ -20,7 +20,7 @@ func (m *UI) selectedLargeModel() *workspace.AgentModel {
 }
 
 // landingView renders the landing page view showing the current working
-// directory, model information, and LSP/MCP status in a two-column layout.
+// directory, model information, and skills status.
 func (m *UI) landingView() string {
 	t := m.com.Styles
 	width := m.layout.main.Dx()
@@ -39,13 +39,11 @@ func (m *UI) landingView() string {
 		layout.Fill(1),
 	).Split(m.layout.main).Assign(new(image.Rectangle), &remainingHeightArea)
 
-	mcpLspSectionWidth := min(30, (width-2)/3)
+	sectionWidth := min(30, (width-2)/3)
 
-	lspSection := m.lspInfo(mcpLspSectionWidth, max(1, remainingHeightArea.Dy()), false)
-	mcpSection := m.mcpInfo(mcpLspSectionWidth, max(1, remainingHeightArea.Dy()), false)
-	skillsSection := m.skillsInfo(mcpLspSectionWidth, max(1, remainingHeightArea.Dy()), false)
+	skillsSection := m.skillsInfo(sectionWidth, max(1, remainingHeightArea.Dy()), false)
 
-	content := lipgloss.JoinHorizontal(lipgloss.Left, lspSection, " ", mcpSection, " ", skillsSection)
+	content := skillsSection
 
 	return lipgloss.NewStyle().
 		Width(width).

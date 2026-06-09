@@ -1010,6 +1010,26 @@ schema = 3
     version = 'v3.0.1'
     hash = 'sha256-FqL9TKYJ0XkNwJFnq9j0VvJ5ZUU1RvH/52h/f5bkYAU='
 
+  [mod.'mellium.im/reader']
+    version = 'v0.1.0'
+    hash = 'sha256-fApPsUzyLU4xQhzHtrmJQU7Bf5DVbyJQJ+95E1cUK7c='
+    goVersion = '1.10'
+
+  [mod.'mellium.im/sasl']
+    version = 'v0.3.2'
+    hash = 'sha256-KxIdG3JxVR52q6pefw3zArUtQ1b+vOkX/MGRizzpsSM='
+    goVersion = '1.20'
+
+  [mod.'mellium.im/xmlstream']
+    version = 'v0.15.4'
+    hash = 'sha256-pcqbWy4jrc4qQaTK2c7xcvPMBcTsQAuVcvA4MprEdqA='
+    goVersion = '1.18'
+
+  [mod.'mellium.im/xmpp']
+    version = 'v0.23.0'
+    hash = 'sha256-a0uHs5KyJqreHrpBOS4MTc10dC4cUyuoRc+x7C1WSec='
+    goVersion = '1.24.0'
+
   [mod.'modernc.org/libc']
     version = 'v1.72.3'
     hash = 'sha256-eOCoqSnX/VzpG63nh1j3JpXRndnZZcn2cDTeutexXAI='
