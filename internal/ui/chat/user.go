@@ -6,11 +6,11 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/crush/internal/message"
-	"github.com/charmbracelet/crush/internal/ui/attachments"
-	"github.com/charmbracelet/crush/internal/ui/common"
-	"github.com/charmbracelet/crush/internal/ui/list"
-	"github.com/charmbracelet/crush/internal/ui/styles"
+	"github.com/amarbel-llc/trapeze/internal/message"
+	"github.com/amarbel-llc/trapeze/internal/ui/attachments"
+	"github.com/amarbel-llc/trapeze/internal/ui/common"
+	"github.com/amarbel-llc/trapeze/internal/ui/list"
+	"github.com/amarbel-llc/trapeze/internal/ui/styles"
 )
 
 // skillInvocation represents the XML structure for a loaded skill.

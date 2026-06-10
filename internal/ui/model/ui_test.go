@@ -4,10 +4,10 @@ import (
 	"testing"
 
 	"charm.land/catwalk/pkg/catwalk"
-	"github.com/charmbracelet/crush/internal/config"
-	"github.com/charmbracelet/crush/internal/csync"
-	"github.com/charmbracelet/crush/internal/ui/common"
-	"github.com/charmbracelet/crush/internal/workspace"
+	"github.com/amarbel-llc/trapeze/internal/config"
+	"github.com/amarbel-llc/trapeze/internal/csync"
+	"github.com/amarbel-llc/trapeze/internal/ui/common"
+	"github.com/amarbel-llc/trapeze/internal/workspace"
 	"github.com/stretchr/testify/require"
 )
 

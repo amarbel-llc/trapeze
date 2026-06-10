@@ -13,14 +13,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/charmbracelet/crush/internal/app"
-	"github.com/charmbracelet/crush/internal/config"
-	"github.com/charmbracelet/crush/internal/csync"
-	"github.com/charmbracelet/crush/internal/db"
-	"github.com/charmbracelet/crush/internal/proto"
-	"github.com/charmbracelet/crush/internal/skills"
-	"github.com/charmbracelet/crush/internal/ui/util"
-	"github.com/charmbracelet/crush/internal/version"
+	"github.com/amarbel-llc/trapeze/internal/app"
+	"github.com/amarbel-llc/trapeze/internal/config"
+	"github.com/amarbel-llc/trapeze/internal/csync"
+	"github.com/amarbel-llc/trapeze/internal/db"
+	"github.com/amarbel-llc/trapeze/internal/proto"
+	"github.com/amarbel-llc/trapeze/internal/skills"
+	"github.com/amarbel-llc/trapeze/internal/ui/util"
+	"github.com/amarbel-llc/trapeze/internal/version"
 	"github.com/google/uuid"
 )
 
@@ -46,7 +46,7 @@ var DefaultCreateGrace = 30 * time.Second
 // shutdown (e.g. when the last workspace is removed).
 type ShutdownFunc func()
 
-// Backend provides transport-agnostic business logic for the Crush
+// Backend provides transport-agnostic business logic for the Trapeze
 // server. It manages workspaces and delegates to [app.App] services.
 //
 // Locking order: when both [Backend.mu] and [Workspace.clientsMu] are
@@ -273,7 +273,7 @@ func (b *Backend) CreateWorkspace(args proto.Workspace) (*Workspace, proto.Works
 
 	cfg.Overrides().SkipPermissionRequests = args.YOLO
 
-	if err := createDotCrushDir(cfg.Config().Options.DataDirectory); err != nil {
+	if err := createDotTrapezeDir(cfg.Config().Options.DataDirectory); err != nil {
 		return nil, proto.Workspace{}, fmt.Errorf("failed to create data directory: %w", err)
 	}
 

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/charmbracelet/crush/internal/config/config",
+  "$id": "https://github.com/amarbel-llc/trapeze/internal/config/config",
   "$ref": "#/$defs/Config",
   "$defs": {
     "Attribution": {
@@ -22,7 +22,7 @@
         },
         "generated_with": {
           "type": "boolean",
-          "description": "Add Generated with Crush line to commit messages and issues and PRs",
+          "description": "Add Generated with Trapeze line to commit messages and issues and PRs",
           "default": true
         }
       },
@@ -81,6 +81,10 @@
         "options": {
           "$ref": "#/$defs/Options",
           "description": "General application options"
+        },
+        "xmpp": {
+          "$ref": "#/$defs/XMPP",
+          "description": "XMPP chat-mode account configuration; when set"
         },
         "permissions": {
           "$ref": "#/$defs/Permissions",
@@ -395,7 +399,7 @@
             "type": "string",
             "examples": [
               ".cursorrules",
-              "CRUSH.md"
+              "TRAPEZE.md"
             ]
           },
           "type": "array",
@@ -405,7 +409,7 @@
           "items": {
             "type": "string",
             "examples": [
-              "~/.config/crush/skills",
+              "~/.config/trapeze/skills",
               "./skills"
             ]
           },
@@ -434,9 +438,9 @@
         "data_directory": {
           "type": "string",
           "description": "Directory for storing application data. Relative paths are resolved against the working directory; absolute paths are used as-is.",
-          "default": ".crush",
+          "default": ".trapeze",
           "examples": [
-            ".crush"
+            ".trapeze"
           ]
         },
         "disabled_tools": {
@@ -475,7 +479,7 @@
           "default": "AGENTS.md",
           "examples": [
             "AGENTS.md",
-            "CRUSH.md",
+            "TRAPEZE.md",
             "CLAUDE.md",
             "docs/LLMs.md"
           ]
@@ -511,7 +515,7 @@
           "items": {
             "type": "string",
             "examples": [
-              "crush-config"
+              "trapeze-config"
             ]
           },
           "type": "array",
@@ -795,6 +799,32 @@
         },
         "grep": {
           "$ref": "#/$defs/ToolGrep"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "XMPP": {
+      "properties": {
+        "jid": {
+          "type": "string",
+          "description": "The user's own XMPP JID (e.g. alice@example.net)"
+        },
+        "password": {
+          "type": "string",
+          "description": "XMPP account password (SASL)"
+        },
+        "server": {
+          "type": "string",
+          "description": "Optional host:port server override; defaults to SRV resolution of the JID domain"
+        },
+        "contact": {
+          "type": "string",
+          "description": "Default peer JID for new outbound conversations (e.g. bob@example.net)"
+        },
+        "insecure": {
+          "type": "boolean",
+          "description": "Skip TLS certificate verification (dev servers with self-signed certs only)"
         }
       },
       "additionalProperties": false,

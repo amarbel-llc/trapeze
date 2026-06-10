@@ -6,9 +6,9 @@ import "fmt"
 type Scope int
 
 const (
-	// ScopeGlobal targets the global data config (~/.local/share/crush/crush.json).
+	// ScopeGlobal targets the global data config (~/.local/share/trapeze/trapeze.json).
 	ScopeGlobal Scope = iota
-	// ScopeWorkspace targets the workspace config (.crush/crush.json).
+	// ScopeWorkspace targets the workspace config (.trapeze/trapeze.json).
 	ScopeWorkspace
 )
 

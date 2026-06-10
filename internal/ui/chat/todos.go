@@ -6,10 +6,10 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/charmbracelet/crush/internal/agent/tools"
-	"github.com/charmbracelet/crush/internal/message"
-	"github.com/charmbracelet/crush/internal/session"
-	"github.com/charmbracelet/crush/internal/ui/styles"
+	"github.com/amarbel-llc/trapeze/internal/agent/tools"
+	"github.com/amarbel-llc/trapeze/internal/message"
+	"github.com/amarbel-llc/trapeze/internal/session"
+	"github.com/amarbel-llc/trapeze/internal/ui/styles"
 	"github.com/charmbracelet/x/ansi"
 )
 

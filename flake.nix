@@ -51,14 +51,14 @@
       conformist,
     }:
     let
-      # crush's release version. Burnt into the binary via the explicit ldflags
+      # trapeze's release version. Burnt into the binary via the explicit ldflags
       # below (trapeze keeps upstream's internal/version package rather than a
       # main.version var, so the fork's auto-injected -X main.version is a
       # linker no-op here). `just bump-version` rewrites this string.
-      crushVersion = "0.1.0";
+      trapezeVersion = "0.1.0";
       # shortRev for clean builds, dirtyShortRev ("<sha>-dirty") for dirty
       # working trees, "unknown" as a last-resort fallback.
-      crushCommit = self.shortRev or self.dirtyShortRev or "unknown";
+      trapezeCommit = self.shortRev or self.dirtyShortRev or "unknown";
     in
     utils.lib.eachDefaultSystem (
       system:
@@ -73,7 +73,7 @@
         # and the `inherit go` in mkGoEnv keeps working unchanged.
         go = (import nixpkgs-go { inherit system; }).go_1_26;
 
-        # Source for the Go build. crush embeds a large, scattered set of
+        # Source for the Go build. trapeze embeds a large, scattered set of
         # non-Go assets via //go:embed (provider.json, migrations/*.sql,
         # builtin/* skills, *.md / *.md.tpl tool prompts, stats/*.{html,css,js,
         # svg}, *.png icons, gitignore/*). The fork's mkGoPkgs helper filters
@@ -112,31 +112,31 @@
             && !(pkgs.lib.hasSuffix "/internal/swagger/swagger.yaml" path);
         };
 
-        # Module path of the upstream fork. The binary stays `crush` (see
-        # trapeze#1 for the eventual crush -> trapeze identity swap).
-        modulePath = "github.com/charmbracelet/crush";
+        # Module path (renamed from the upstream fork's
+        # github.com/charmbracelet/crush — trapeze#1).
+        modulePath = "github.com/amarbel-llc/trapeze";
 
         ldflags = [
           "-X"
-          "${modulePath}/internal/version.Version=${crushVersion}"
+          "${modulePath}/internal/version.Version=${trapezeVersion}"
           "-X"
-          "${modulePath}/internal/version.Commit=${crushCommit}"
+          "${modulePath}/internal/version.Commit=${trapezeCommit}"
         ];
 
         # The package set the hermetic go-test / go-vet checks run over: all
         # packages MINUS the two whose tests can't run in the nix build
         # sandbox. internal/agent's VCR tests drive a charm.land/x/vcr recorder
-        # against hyper.charm.land (needs network + CRUSH_HYPER_API_KEY);
+        # against hyper.charm.land (needs network + TRAPEZE_HYPER_API_KEY);
         # internal/shell's TestDispatch_BinaryPassthroughExecutes copies a
         # PATH binary and execs the copy, which fails on the sandbox's
         # store-linked coreutils. Both stay runnable in the devshell via
         # `just test-go` / `just test-agent`. See trapeze#2.
         goTestPackages = "$(go list ./... | grep -vE '/internal/(agent|shell)($|/)')";
 
-        crush = pkgs.buildGoApplication {
+        trapeze = pkgs.buildGoApplication {
           pname = "trapeze";
-          version = crushVersion;
-          commit = crushCommit;
+          version = trapezeVersion;
+          commit = trapezeCommit;
           src = goSrc;
           pwd = ./.;
           modules = ./gomod2nix.toml;
@@ -160,16 +160,16 @@
 
           meta = {
             description = "Terminal-based AI coding agent (fork of charmbracelet/crush)";
-            homepage = "https://github.com/charmbracelet/crush";
+            homepage = "https://github.com/amarbel-llc/trapeze";
             license = pkgs.lib.licenses.mit;
-            mainProgram = "crush";
+            mainProgram = "trapeze";
           };
         };
 
         # --- hermetic check derivations (moxy pattern) ---------------------
-        # The `crush` package build already runs the full unit suite in its
+        # The `trapeze` package build already runs the full unit suite in its
         # checkPhase (doCheck = true) and has no postInstall to strip, so it
-        # IS the go-test check — `checks.go-test = crush` below reuses it
+        # IS the go-test check — `checks.go-test = trapeze` below reuses it
         # rather than materializing an identical second build.
         #
         # No standalone `go vet` check: golangci-lint (below) runs the `govet`
@@ -183,11 +183,11 @@
 
         # golangci-lint as a hermetic check. trapeze's .golangci.yml (v2) uses
         # only built-in analyzers, so it typechecks offline against the
-        # buildGoApplication module graph. Overrides `crush`'s test checkPhase
+        # buildGoApplication module graph. Overrides `trapeze`'s test checkPhase
         # with the lint run. --config points at the flake's copy of
         # .golangci.yml (the dotfile is filtered out of goSrc). Caches go to
         # $TMPDIR (the sandbox HOME is read-only).
-        goLint = crush.overrideAttrs (old: {
+        goLint = trapeze.overrideAttrs (old: {
           pname = "trapeze-golangci-lint";
           nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [
             pkgs-master.golangci-lint
@@ -263,8 +263,8 @@
       in
       {
         packages = {
-          default = crush;
-          inherit crush;
+          default = trapeze;
+          inherit trapeze;
         };
 
         # `nix flake check` (= the `just validate` / pre-merge gate) runs every
@@ -273,7 +273,7 @@
         # includes the govet analyzer, honoring the repo's //nolint).
         checks = {
           conformist = conformistCheck;
-          go-test = crush;
+          go-test = trapeze;
           go-lint = goLint;
         };
 

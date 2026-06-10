@@ -1,4 +1,4 @@
-// Package logo renders a Crush wordmark in a stylized way.
+// Package logo renders a Trapeze wordmark in a stylized way.
 package logo
 
 import (
@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/crush/internal/ui/styles"
+	"github.com/amarbel-llc/trapeze/internal/ui/styles"
 	"github.com/charmbracelet/x/ansi"
 )
 
@@ -18,7 +18,7 @@ type letterform func(bool) string
 
 const diag = `╱`
 
-// Opts are the options for rendering the Crush title art.
+// Opts are the options for rendering the Trapeze title art.
 type Opts struct {
 	FieldColor   color.Color // diagonal lines
 	TitleColorA  color.Color // left gradient ramp point
@@ -26,7 +26,7 @@ type Opts struct {
 	CharmColor   color.Color // Charm™ text color
 	VersionColor color.Color // version text color
 	Width        int         // width of the rendered logo, used for truncation
-	Hyper        bool        // whether it is Crush or Hypercrush
+	Hyper        bool        // whether it is Trapeze or Hypertrapeze
 
 	// When true, stretch a random letterform on each render. Has no effect in
 	// compact mode. Mainly for testing. In production you will want to cache
@@ -34,7 +34,7 @@ type Opts struct {
 	Unstable bool
 }
 
-// Render renders the Crush logo. Set the argument to true to render the narrow
+// Render renders the Trapeze logo. Set the argument to true to render the narrow
 // version, intended for use in a sidebar.
 //
 // The compact argument determines whether it renders compact for the sidebar
@@ -61,56 +61,58 @@ func Render(base lipgloss.Style, version string, compact bool, o Opts) string {
 			LetterR,
 		}
 	}
-	crushLetterforms := []letterform{
-		LetterC,
+	trapezeLetterforms := []letterform{
+		LetterT,
 		LetterR,
-		LetterU,
-		LetterSAlt,
-		LetterH,
+		LetterA,
+		LetterP,
+		LetterE,
+		LetterZ,
+		LetterEAlt,
 	}
 	if o.Hyper && !compact {
-		crushLetterforms = append(hyperLetterforms, crushLetterforms...)
+		trapezeLetterforms = append(hyperLetterforms, trapezeLetterforms...)
 	}
 
 	stretchIndex := -1 // -1 means no stretching.
 	if !compact && !o.Unstable {
 		// Always stretch the same letterform, which is picked once at random.
-		stretchIndex = cachedRandN(len(crushLetterforms))
+		stretchIndex = cachedRandN(len(trapezeLetterforms))
 	} else if !compact && o.Unstable {
 		// Stretch a random letterform on every render.
-		stretchIndex = rand.IntN(len(crushLetterforms))
+		stretchIndex = rand.IntN(len(trapezeLetterforms))
 	}
-	crush := renderWord(spacing, stretchIndex, crushLetterforms...)
+	trapeze := renderWord(spacing, stretchIndex, trapezeLetterforms...)
 	if o.Hyper && compact {
-		crush = renderWord(spacing, stretchIndex, hyperLetterforms...) + "\n" + crush
+		trapeze = renderWord(spacing, stretchIndex, hyperLetterforms...) + "\n" + trapeze
 	}
-	crushWidth := lipgloss.Width(crush)
+	trapezeWidth := lipgloss.Width(trapeze)
 	b := new(strings.Builder)
-	for r := range strings.SplitSeq(crush, "\n") {
+	for r := range strings.SplitSeq(trapeze, "\n") {
 		fmt.Fprintln(b, styles.ApplyForegroundGrad(base, r, o.TitleColorA, o.TitleColorB))
 	}
-	crush = b.String()
+	trapeze = b.String()
 
 	// Charm and version.
 	metaRowGap := 1
-	maxVersionWidth := crushWidth - lipgloss.Width(charm) - metaRowGap
+	maxVersionWidth := trapezeWidth - lipgloss.Width(charm) - metaRowGap
 	version = ansi.Truncate(version, maxVersionWidth, "…") // truncate version if too long.
 	if o.Hyper && compact {
 		version += " "
 	}
-	gap := max(0, crushWidth-lipgloss.Width(charm)-lipgloss.Width(version))
+	gap := max(0, trapezeWidth-lipgloss.Width(charm)-lipgloss.Width(version))
 	metaRow := fg(o.CharmColor, charm) + strings.Repeat(" ", gap) + fg(o.VersionColor, version)
 
-	// Join the meta row and big Crush title.
-	crush = strings.TrimSpace(metaRow + "\n" + crush)
+	// Join the meta row and big Trapeze title.
+	trapeze = strings.TrimSpace(metaRow + "\n" + trapeze)
 
-	// Narrow version. If this is Hypercrush, this is also a stacked version.
+	// Narrow version. If this is Hypertrapeze, this is also a stacked version.
 	if compact {
-		field := fg(o.FieldColor, strings.Repeat(diag, crushWidth))
-		return strings.Join([]string{field, field, crush, field, ""}, "\n")
+		field := fg(o.FieldColor, strings.Repeat(diag, trapezeWidth))
+		return strings.Join([]string{field, field, trapeze, field, ""}, "\n")
 	}
 
-	fieldHeight := lipgloss.Height(crush)
+	fieldHeight := lipgloss.Height(trapeze)
 
 	// Left field.
 	const leftWidth = 6
@@ -121,7 +123,7 @@ func Render(base lipgloss.Style, version string, compact bool, o Opts) string {
 	}
 
 	// Right field.
-	rightWidth := max(15, o.Width-crushWidth-leftWidth-2) // 2 for the gap.
+	rightWidth := max(15, o.Width-trapezeWidth-leftWidth-2) // 2 for the gap.
 	const stepDownAt = 0
 	rightField := new(strings.Builder)
 	for i := range fieldHeight {
@@ -134,7 +136,7 @@ func Render(base lipgloss.Style, version string, compact bool, o Opts) string {
 
 	// Return the wide version.
 	const hGap = " "
-	logo := lipgloss.JoinHorizontal(lipgloss.Top, leftField.String(), hGap, crush, hGap, rightField.String())
+	logo := lipgloss.JoinHorizontal(lipgloss.Top, leftField.String(), hGap, trapeze, hGap, rightField.String())
 	if o.Width > 0 {
 		// Truncate the logo to the specified width.
 		lines := strings.Split(logo, "\n")
@@ -146,12 +148,12 @@ func Render(base lipgloss.Style, version string, compact bool, o Opts) string {
 	return logo
 }
 
-// SmallRender renders a smaller version of the Crush logo, suitable for
+// SmallRender renders a smaller version of the Trapeze logo, suitable for
 // smaller windows or sidebar usage.
 func SmallRender(t *styles.Styles, width int, o Opts) string {
-	name := "Crush"
+	name := "Trapeze"
 	if o.Hyper {
-		name = "HYPERCRUSH"
+		name = "HYPERTRAPEZE"
 	}
 	charm := "Charm™"
 	if !o.Hyper {

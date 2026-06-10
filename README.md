@@ -1,173 +1,49 @@
-# Crush
+# Trapeze
 
 <p align="center">
-    <a href="https://stuff.charm.sh/crush/charm-crush.png"><img width="450" alt="Charm Crush Logo" src="https://github.com/user-attachments/assets/cf8ca3ce-8b02-43f0-9d0f-5a331488da4b" /></a><br />
-    <a href="https://github.com/charmbracelet/crush/releases"><img src="https://img.shields.io/github/release/charmbracelet/crush" alt="Latest Release"></a>
-    <a href="https://github.com/charmbracelet/crush/actions"><img src="https://github.com/charmbracelet/crush/actions/workflows/build.yml/badge.svg" alt="Build Status"></a>
+    <a href="https://github.com/amarbel-llc/trapeze/releases"><img src="https://img.shields.io/github/release/amarbel-llc/trapeze" alt="Latest Release"></a>
 </p>
 
 <p align="center">Your new coding bestie, now available in your favourite terminal.<br />Your tools, your code, and your workflows, wired into your LLM of choice.</p>
-<p align="center">终端里的编程新搭档，<br />无缝接入你的工具、代码与工作流，全面兼容主流 LLM 模型。</p>
 
-<p align="center"><img width="800" alt="Crush Demo" src="https://github.com/user-attachments/assets/58280caf-851b-470a-b6f7-d5c4ea8a1968" /></p>
+> [!NOTE]
+> Trapeze is amarbel-llc's fork of [charmbracelet/crush](https://github.com/charmbracelet/crush),
+> renamed from `trapeze` to `trapeze` (see trapeze#1). Upstream documentation
+> largely still applies; identity-bearing names (binary, module path, config
+> dirs, env vars) are `trapeze`/`TRAPEZE_*` here.
 
 ## Features
 
 - **Multi-Model:** choose from a wide range of LLMs or add your own via OpenAI- or Anthropic-compatible APIs
 - **Flexible:** switch LLMs mid-session while preserving context
 - **Session-Based:** maintain multiple work sessions and contexts per project
-- **LSP-Enhanced:** Crush uses LSPs for additional context, just like you do
+- **LSP-Enhanced:** Trapeze uses LSPs for additional context, just like you do
 - **Extensible:** add capabilities via MCPs (`http`, `stdio`, and `sse`)
 - **Works Everywhere:** first-class support in every terminal on macOS, Linux, Windows (PowerShell and WSL), Android, FreeBSD, OpenBSD, and NetBSD
-- **Industrial Grade:** built on the Charm ecosystem, powering 25k+ applications, from leading open source projects to business-critical infrastructure
 
 ## Installation
 
-Use a package manager:
+Build with Nix (the repo's source of truth — see `justfile`):
 
 ```bash
-# Homebrew
-brew install charmbracelet/tap/crush
-
-# NPM
-npm install -g @charmland/crush
-
-# Arch Linux (btw)
-yay -S crush-bin
-
-# Nix
-nix run github:numtide/nix-ai-tools#crush
-
-# FreeBSD
-pkg install crush
+nix build github:amarbel-llc/trapeze
 ```
-
-Windows users:
-
-```bash
-# Winget
-winget install charmbracelet.crush
-
-# Scoop
-scoop bucket add charm https://github.com/charmbracelet/scoop-bucket.git
-scoop install crush
-```
-
-<details>
-<summary><strong>Nix (NUR)</strong></summary>
-
-Crush is available via the official Charm [NUR](https://github.com/nix-community/NUR) in `nur.repos.charmbracelet.crush`, which is the most up-to-date way to get Crush in Nix.
-
-You can also try out Crush via the NUR with `nix-shell`:
-
-```bash
-# Add the NUR channel.
-nix-channel --add https://github.com/nix-community/NUR/archive/main.tar.gz nur
-nix-channel --update
-
-# Get Crush in a Nix shell.
-nix-shell -p '(import <nur> { pkgs = import <nixpkgs> {}; }).repos.charmbracelet.crush'
-```
-
-### NixOS & Home Manager Module Usage via NUR
-
-Crush provides NixOS and Home Manager modules via NUR.
-You can use these modules directly in your flake by importing them from NUR. Since it auto detects whether its a home manager or nixos context you can use the import the exact same way :)
-
-```nix
-{
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    nur.url = "github:nix-community/NUR";
-  };
-
-  outputs = { self, nixpkgs, nur, ... }: {
-    nixosConfigurations.your-hostname = nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
-      modules = [
-        nur.modules.nixos.default
-        nur.repos.charmbracelet.modules.crush
-        {
-          programs.crush = {
-            enable = true;
-            settings = {
-              providers = {
-                openai = {
-                  id = "openai";
-                  name = "OpenAI";
-                  base_url = "https://api.openai.com/v1";
-                  type = "openai";
-                  api_key = "sk-fake123456789abcdef...";
-                  models = [
-                    {
-                      id = "gpt-4";
-                      name = "GPT-4";
-                    }
-                  ];
-                };
-              };
-              lsp = {
-                go = { command = "gopls"; enabled = true; };
-                nix = { command = "nil"; enabled = true; };
-              };
-              options = {
-                context_paths = [ "/etc/nixos/configuration.nix" ];
-                tui = { compact_mode = true; };
-                debug = false;
-              };
-            };
-          };
-        }
-      ];
-    };
-  };
-}
-```
-
-</details>
-
-<details>
-<summary><strong>Debian/Ubuntu</strong></summary>
-
-```bash
-sudo mkdir -p /etc/apt/keyrings
-curl -fsSL https://repo.charm.sh/apt/gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/charm.gpg
-echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | sudo tee /etc/apt/sources.list.d/charm.list
-sudo apt update && sudo apt install crush
-```
-
-</details>
-
-<details>
-<summary><strong>Fedora/RHEL</strong></summary>
-
-```bash
-echo '[charm]
-name=Charm
-baseurl=https://repo.charm.sh/yum/
-enabled=1
-gpgcheck=1
-gpgkey=https://repo.charm.sh/yum/gpg.key' | sudo tee /etc/yum.repos.d/charm.repo
-sudo yum install crush
-```
-
-</details>
 
 Or, download it:
 
 - [Packages][releases] are available in Debian and RPM formats
 - [Binaries][releases] are available for Linux, macOS, Windows, FreeBSD, OpenBSD, and NetBSD
 
-[releases]: https://github.com/charmbracelet/crush/releases
+[releases]: https://github.com/amarbel-llc/trapeze/releases
 
 Or just install it with Go:
 
 ```
-go install github.com/charmbracelet/crush@latest
+go install github.com/amarbel-llc/trapeze@latest
 ```
 
 > [!WARNING]
-> Productivity may increase when using Crush and you may find yourself nerd
+> Productivity may increase when using Trapeze and you may find yourself nerd
 > sniped when first using the application. If the symptoms persist, join the
 > [Slack][slack] or [Discord][discord] and nerd snipe the rest of us.
 
@@ -175,7 +51,7 @@ go install github.com/charmbracelet/crush@latest
 
 The quickest way to get started is to grab an API key for your preferred
 provider such as Anthropic, OpenAI, Groq, OpenRouter, or Vercel AI Gateway and just start
-Crush. You'll be prompted to enter your API key.
+Trapeze. You'll be prompted to enter your API key.
 
 That said, you can also set environment variables for preferred providers.
 
@@ -211,7 +87,7 @@ That said, you can also set environment variables for preferred providers.
 ### Subscriptions
 
 If you prefer subscription-based usage, here are some plans that work well in
-Crush:
+Trapeze:
 
 - [Synthetic](https://synthetic.new/pricing)
 - [GLM Coding Plan](https://z.ai/subscribe)
@@ -220,25 +96,25 @@ Crush:
 
 ### By the Way
 
-Is there a provider you’d like to see in Crush? Is there an existing model that needs an update?
+Is there a provider you’d like to see in Trapeze? Is there an existing model that needs an update?
 
-Crush’s default model listing is managed in [Catwalk](https://github.com/charmbracelet/catwalk), a community-supported, open source repository of Crush-compatible models, and you’re welcome to contribute.
+Trapeze’s default model listing is managed in [Catwalk](https://github.com/charmbracelet/catwalk), a community-supported, open source repository of Trapeze-compatible models, and you’re welcome to contribute.
 
 <a href="https://github.com/charmbracelet/catwalk"><img width="174" height="174" alt="Catwalk Badge" src="https://github.com/user-attachments/assets/95b49515-fe82-4409-b10d-5beb0873787d" /></a>
 
 ## Configuration
 
 > [!TIP]
-> Crush ships with a builtin `crush-config` skill for configuring itself. In
-> many cases you can simply ask Crush to configure itself.
+> Trapeze ships with a builtin `trapeze-config` skill for configuring itself. In
+> many cases you can simply ask Trapeze to configure itself.
 
-Crush runs great with no configuration. That said, if you do need or want to
-customize Crush, configuration can be added either local to the project itself,
+Trapeze runs great with no configuration. That said, if you do need or want to
+customize Trapeze, configuration can be added either local to the project itself,
 or globally, with the following priority:
 
-1. `.crush.json`
-2. `crush.json`
-3. `$HOME/.config/crush/crush.json`
+1. `.trapeze.json`
+2. `trapeze.json`
+3. `$HOME/.config/trapeze/trapeze.json`
 
 Configuration itself is stored as a JSON object:
 
@@ -249,31 +125,31 @@ Configuration itself is stored as a JSON object:
 }
 ```
 
-As an additional note, Crush also stores ephemeral data, such as application
+As an additional note, Trapeze also stores ephemeral data, such as application
 state, in one additional location:
 
 ```bash
 # Unix
-$HOME/.local/share/crush/crush.json
+$HOME/.local/share/trapeze/trapeze.json
 
 # Windows
-%LOCALAPPDATA%\crush\crush.json
+%LOCALAPPDATA%\trapeze\trapeze.json
 ```
 
 > [!TIP]
 > You can override the user and data config locations by setting:
 >
-> - `CRUSH_GLOBAL_CONFIG`
-> - `CRUSH_GLOBAL_DATA`
+> - `TRAPEZE_GLOBAL_CONFIG`
+> - `TRAPEZE_GLOBAL_DATA`
 
 ### LSPs
 
-Crush can use LSPs for additional context to help inform its decisions, just
+Trapeze can use LSPs for additional context to help inform its decisions, just
 like you would. LSPs can be added manually like so:
 
 ```json
 {
-  "$schema": "https://charm.land/crush.json",
+  "$schema": "https://raw.githubusercontent.com/amarbel-llc/trapeze/master/schema.json",
   "lsp": {
     "go": {
       "command": "gopls",
@@ -294,14 +170,14 @@ like you would. LSPs can be added manually like so:
 
 ### MCPs
 
-Crush also supports Model Context Protocol (MCP) servers through three transport
+Trapeze also supports Model Context Protocol (MCP) servers through three transport
 types: `stdio` for command-line servers, `http` for HTTP endpoints, and `sse`
 for Server-Sent Events.
 
 Shell-style value expansion (`$VAR`, `${VAR:-default}`, `$(command)`, quoting,
 nesting) works in `command`, `args`, `env`, `headers`, and `url`, so
 file-based secrets work out of the box. You can use values like `"$TOKEN"`
-or `"$(cat /path/to/secret/token)"`. Expansion runs through Crush's embedded
+or `"$(cat /path/to/secret/token)"`. Expansion runs through Trapeze's embedded
 shell, so the same syntax works on every supported system, Windows included.
 
 Unset variables expand to the empty string by default, matching bash. For
@@ -321,13 +197,13 @@ Provider `extra_body` is a non-expanding JSON passthrough; put env-driven
 values in `extra_headers` or the provider's `api_key` / `base_url`, all of
 which do expand.
 
-> **Security note:** `crush.json` is trusted code. Any `$(...)` in it runs at
+> **Security note:** `trapeze.json` is trusted code. Any `$(...)` in it runs at
 > load time with your shell's privileges, before the UI appears. Don't launch
-> Crush in a directory whose `crush.json` you haven't reviewed.
+> Trapeze in a directory whose `trapeze.json` you haven't reviewed.
 
 ```json
 {
-  "$schema": "https://charm.land/crush.json",
+  "$schema": "https://raw.githubusercontent.com/amarbel-llc/trapeze/master/schema.json",
   "mcp": {
     "filesystem": {
       "type": "stdio",
@@ -365,13 +241,13 @@ which do expand.
 
 ### Hooks
 
-Crush has preliminary support for hooks. For details, see
+Trapeze has preliminary support for hooks. For details, see
 [the hook guide](./docs/hooks/).
 
 ### Sharing a workspace across clients
 
-When Crush is run against a shared backend (for example two TUIs talking to
-the same `crush serve`), clients are grouped into **workspaces** keyed by
+When Trapeze is run against a shared backend (for example two TUIs talking to
+the same `trapeze serve`), clients are grouped into **workspaces** keyed by
 their resolved `--cwd`. Two clients with the same `--cwd` join the same
 underlying workspace, so they share the session list, message history,
 permission queue, LSP, and MCP state.
@@ -404,23 +280,23 @@ does not get reaped before it can attach.
 
 ### Ignoring Files
 
-Crush respects `.gitignore` files by default, but you can also create a
-`.crushignore` file to specify additional files and directories that Crush
+Trapeze respects `.gitignore` files by default, but you can also create a
+`.trapezeignore` file to specify additional files and directories that Trapeze
 should ignore. This is useful for excluding files that you want in version
-control but don't want Crush to consider when providing context.
+control but don't want Trapeze to consider when providing context.
 
-The `.crushignore` file uses the same syntax as `.gitignore` and can be placed
+The `.trapezeignore` file uses the same syntax as `.gitignore` and can be placed
 in the root of your project or in subdirectories.
 
 ### Allowing Tools
 
-By default, Crush will ask you for permission before running tool calls. If
+By default, Trapeze will ask you for permission before running tool calls. If
 you'd like, you can allow tools to be executed without prompting you for
 permissions. Use this with care.
 
 ```json
 {
-  "$schema": "https://charm.land/crush.json",
+  "$schema": "https://raw.githubusercontent.com/amarbel-llc/trapeze/master/schema.json",
   "permissions": {
     "allowed_tools": [
       "view",
@@ -433,18 +309,18 @@ permissions. Use this with care.
 }
 ```
 
-You can also skip all permission prompts entirely by running Crush with the
+You can also skip all permission prompts entirely by running Trapeze with the
 `--yolo` flag. Be very, very careful with this feature.
 
 ### Disabling Built-In Tools
 
-If you'd like to prevent Crush from using certain built-in tools entirely, you
+If you'd like to prevent Trapeze from using certain built-in tools entirely, you
 can disable them via the `options.disabled_tools` list. Disabled tools are
 completely hidden from the agent.
 
 ```json
 {
-  "$schema": "https://charm.land/crush.json",
+  "$schema": "https://raw.githubusercontent.com/amarbel-llc/trapeze/master/schema.json",
   "options": {
     "disabled_tools": ["bash", "sourcegraph"]
   }
@@ -455,52 +331,52 @@ To disable tools from MCP servers, see the [MCP config section](#mcps).
 
 ### Disabling Skills
 
-If you'd like to prevent Crush from using certain skills entirely, you can
+If you'd like to prevent Trapeze from using certain skills entirely, you can
 disable them via the `options.disabled_skills` list. Disabled skills are hidden
 from the agent, including builtin skills and skills discovered from disk.
 
 ```json
 {
-  "$schema": "https://charm.land/crush.json",
+  "$schema": "https://raw.githubusercontent.com/amarbel-llc/trapeze/master/schema.json",
   "options": {
-    "disabled_skills": ["crush-config"]
+    "disabled_skills": ["trapeze-config"]
   }
 }
 ```
 
 ### Agent Skills
 
-Crush supports the [Agent Skills](https://agentskills.io) open standard for
+Trapeze supports the [Agent Skills](https://agentskills.io) open standard for
 extending agent capabilities with reusable skill packages. Skills are folders
-containing a `SKILL.md` file with instructions that Crush can discover and
+containing a `SKILL.md` file with instructions that Trapeze can discover and
 activate on demand.
 
 The global paths we looks for skills are:
 
-* `$CRUSH_SKILLS_DIR`
+* `$TRAPEZE_SKILLS_DIR`
 * `$XDG_CONFIG_HOME/agents/skills` or `~/.config/agents/skills/`
-* `$XDG_CONFIG_HOME/crush/skills` or `~/.config/crush/skills/`
+* `$XDG_CONFIG_HOME/trapeze/skills` or `~/.config/trapeze/skills/`
 * `~/.agents/skills/`
 * `~/.claude/skills/`
 * On Windows, we _also_ look at
   * `%LOCALAPPDATA%\agents\skills\` or `%USERPROFILE%\AppData\Local\agents\skills\`
-  * `%LOCALAPPDATA%\crush\skills\` or `%USERPROFILE%\AppData\Local\crush\skills\`
+  * `%LOCALAPPDATA%\trapeze\skills\` or `%USERPROFILE%\AppData\Local\trapeze\skills\`
 * Additional paths configured via `options.skills_paths`
 
 On top of that, we _also_ load skills in your project from the following
 relative paths:
 
 * `.agents/skills`
-* `.crush/skills`
+* `.trapeze/skills`
 * `.claude/skills`
 * `.cursor/skills`
 
 ```jsonc
 {
-  "$schema": "https://charm.land/crush.json",
+  "$schema": "https://raw.githubusercontent.com/amarbel-llc/trapeze/master/schema.json",
   "options": {
     "skills_paths": [
-      "~/.config/crush/skills", // Windows: "%LOCALAPPDATA%\\crush\\skills",
+      "~/.config/trapeze/skills", // Windows: "%LOCALAPPDATA%\\trapeze\\skills",
       "./project-skills",
     ],
   },
@@ -511,16 +387,16 @@ You can get started with example skills from [anthropics/skills](https://github.
 
 ```bash
 # Unix
-mkdir -p ~/.config/crush/skills
-cd ~/.config/crush/skills
+mkdir -p ~/.config/trapeze/skills
+cd ~/.config/trapeze/skills
 git clone https://github.com/anthropics/skills.git _temp
 mv _temp/skills/* . && rm -rf _temp
 ```
 
 ```powershell
 # Windows (PowerShell)
-mkdir -Force "$env:LOCALAPPDATA\crush\skills"
-cd "$env:LOCALAPPDATA\crush\skills"
+mkdir -Force "$env:LOCALAPPDATA\trapeze\skills"
+cd "$env:LOCALAPPDATA\trapeze\skills"
 git clone https://github.com/anthropics/skills.git _temp
 mv _temp/skills/* . ; rm -r -force _temp
 ```
@@ -558,13 +434,13 @@ Skills with `disable-model-invocation` won't appear in the model's available ski
 
 ### Desktop notifications
 
-Crush sends desktop notifications when a tool call requires permission and when
+Trapeze sends desktop notifications when a tool call requires permission and when
 the agent finishes its turn. They're only sent when the terminal window isn't
 focused _and_ your terminal supports reporting the focus state.
 
 ```jsonc
 {
-  "$schema": "https://charm.land/crush.json",
+  "$schema": "https://raw.githubusercontent.com/amarbel-llc/trapeze/master/schema.json",
   "options": {
     "disable_notifications": false, // default
   },
@@ -577,14 +453,14 @@ limitations.
 
 ### Initialization
 
-When you initialize a project, Crush analyzes your codebase and creates
+When you initialize a project, Trapeze analyzes your codebase and creates
 a context file that helps it work more effectively in future sessions.
 By default, this file is named `AGENTS.md`, but you can customize the
 name and location with the `initialize_as` option:
 
 ```json
 {
-  "$schema": "https://charm.land/crush.json",
+  "$schema": "https://raw.githubusercontent.com/amarbel-llc/trapeze/master/schema.json",
   "options": {
     "initialize_as": "AGENTS.md"
   }
@@ -592,19 +468,19 @@ name and location with the `initialize_as` option:
 ```
 
 This is useful if you prefer a different naming convention or want to
-place the file in a specific directory (e.g., `CRUSH.md` or
-`docs/LLMs.md`). Crush will fill the file with project-specific context
+place the file in a specific directory (e.g., `TRAPEZE.md` or
+`docs/LLMs.md`). Trapeze will fill the file with project-specific context
 like build commands, code patterns, and conventions it discovered during
 initialization.
 
 ### Attribution Settings
 
-By default, Crush adds attribution information to Git commits and pull requests
+By default, Trapeze adds attribution information to Git commits and pull requests
 it creates. You can customize this behavior with the `attribution` option:
 
 ```json
 {
-  "$schema": "https://charm.land/crush.json",
+  "$schema": "https://raw.githubusercontent.com/amarbel-llc/trapeze/master/schema.json",
   "options": {
     "attribution": {
       "trailer_style": "co-authored-by",
@@ -616,15 +492,15 @@ it creates. You can customize this behavior with the `attribution` option:
 
 - `trailer_style`: Controls the attribution trailer added to commit messages
   (default: `assisted-by`)
-  - `assisted-by`: Adds `Assisted-by: Crush:[ModelID]` as specified in [the convention](https://docs.kernel.org/process/coding-assistants.html#attribution)
-  - `co-authored-by`: Adds `Co-Authored-By: Crush <crush@charm.land>`
+  - `assisted-by`: Adds `Assisted-by: Trapeze:[ModelID]` as specified in [the convention](https://docs.kernel.org/process/coding-assistants.html#attribution)
+  - `co-authored-by`: Adds `Co-Authored-By: Trapeze <trapeze@charm.land>`
   - `none`: No attribution trailer
-- `generated_with`: When true (default), adds `💘 Generated with Crush` line to
+- `generated_with`: When true (default), adds `💘 Generated with Trapeze` line to
   commit messages and PR descriptions
 
 ### Custom Providers
 
-Crush supports custom provider configurations for both OpenAI-compatible and
+Trapeze supports custom provider configurations for both OpenAI-compatible and
 Anthropic-compatible APIs.
 
 > [!NOTE]
@@ -641,7 +517,7 @@ API. Don't forget to set `DEEPSEEK_API_KEY` in your environment.
 
 ```json
 {
-  "$schema": "https://charm.land/crush.json",
+  "$schema": "https://raw.githubusercontent.com/amarbel-llc/trapeze/master/schema.json",
   "providers": {
     "deepseek": {
       "type": "openai-compat",
@@ -670,7 +546,7 @@ Custom Anthropic-compatible providers follow this format:
 
 ```json
 {
-  "$schema": "https://charm.land/crush.json",
+  "$schema": "https://raw.githubusercontent.com/amarbel-llc/trapeze/master/schema.json",
   "providers": {
     "custom-anthropic": {
       "type": "anthropic",
@@ -700,11 +576,11 @@ Custom Anthropic-compatible providers follow this format:
 
 ### Amazon Bedrock
 
-Crush currently supports running Anthropic models through Bedrock, with caching disabled.
+Trapeze currently supports running Anthropic models through Bedrock, with caching disabled.
 
 - A Bedrock provider will appear once you have AWS configured, i.e. `aws configure`
-- Crush also expects the `AWS_REGION` or `AWS_DEFAULT_REGION` to be set
-- To use a specific AWS profile set `AWS_PROFILE` in your environment, i.e. `AWS_PROFILE=myprofile crush`
+- Trapeze also expects the `AWS_REGION` or `AWS_DEFAULT_REGION` to be set
+- To use a specific AWS profile set `AWS_PROFILE` in your environment, i.e. `AWS_PROFILE=myprofile trapeze`
 - Alternatively to `aws configure`, you can also just set `AWS_BEARER_TOKEN_BEDROCK`
 
 ### Vertex AI Platform
@@ -719,7 +595,7 @@ To add specific models to the configuration, configure as such:
 
 ```json
 {
-  "$schema": "https://charm.land/crush.json",
+  "$schema": "https://raw.githubusercontent.com/amarbel-llc/trapeze/master/schema.json",
   "providers": {
     "vertexai": {
       "models": [
@@ -791,28 +667,28 @@ Local models can also be configured via OpenAI-compatible API. Here are two comm
 
 ## Logging
 
-Sometimes you need to look at logs. Luckily, Crush logs all sorts of
-stuff. Logs are stored in `./.crush/logs/crush.log` relative to the project.
+Sometimes you need to look at logs. Luckily, Trapeze logs all sorts of
+stuff. Logs are stored in `./.trapeze/logs/trapeze.log` relative to the project.
 
 The CLI also contains some helper commands to make perusing recent logs easier:
 
 ```bash
 # Print the last 1000 lines
-crush logs
+trapeze logs
 
 # Print the last 500 lines
-crush logs --tail 500
+trapeze logs --tail 500
 
 # Follow logs in real time
-crush logs --follow
+trapeze logs --follow
 ```
 
-Want more logging? Run `crush` with the `--debug` flag, or enable it in the
+Want more logging? Run `trapeze` with the `--debug` flag, or enable it in the
 config:
 
 ```json
 {
-  "$schema": "https://charm.land/crush.json",
+  "$schema": "https://raw.githubusercontent.com/amarbel-llc/trapeze/master/schema.json",
   "options": {
     "debug": true,
     "debug_lsp": true
@@ -822,10 +698,10 @@ config:
 
 ## Provider Auto-Updates
 
-By default, Crush automatically checks for the latest and greatest list of
+By default, Trapeze automatically checks for the latest and greatest list of
 providers and models from [Catwalk](https://github.com/charmbracelet/catwalk),
-the open source Crush provider database. This means that when new providers and
-models are available, or when model metadata changes, Crush automatically
+the open source Trapeze provider database. This means that when new providers and
+models are available, or when model metadata changes, Trapeze automatically
 updates your local configuration.
 
 ### Disabling automatic provider updates
@@ -835,60 +711,60 @@ air-gapped environments, this might not be want you want, and this feature can
 be disabled.
 
 To disable automatic provider updates, set `disable_provider_auto_update` into
-your `crush.json` config:
+your `trapeze.json` config:
 
 ```json
 {
-  "$schema": "https://charm.land/crush.json",
+  "$schema": "https://raw.githubusercontent.com/amarbel-llc/trapeze/master/schema.json",
   "options": {
     "disable_provider_auto_update": true
   }
 }
 ```
 
-Or set the `CRUSH_DISABLE_PROVIDER_AUTO_UPDATE` environment variable:
+Or set the `TRAPEZE_DISABLE_PROVIDER_AUTO_UPDATE` environment variable:
 
 ```bash
-export CRUSH_DISABLE_PROVIDER_AUTO_UPDATE=1
+export TRAPEZE_DISABLE_PROVIDER_AUTO_UPDATE=1
 ```
 
 ### Manually updating providers
 
-Manually updating providers is possible with the `crush update-providers`
+Manually updating providers is possible with the `trapeze update-providers`
 command:
 
 ```bash
 # Update providers remotely from Catwalk.
-crush update-providers
+trapeze update-providers
 
 # Update providers from a custom Catwalk base URL.
-crush update-providers https://example.com/
+trapeze update-providers https://example.com/
 
 # Update providers from a local file.
-crush update-providers /path/to/local-providers.json
+trapeze update-providers /path/to/local-providers.json
 
-# Reset providers to the embedded version, embedded at crush at build time.
-crush update-providers embedded
+# Reset providers to the embedded version, embedded at trapeze at build time.
+trapeze update-providers embedded
 
 # For more info:
-crush update-providers --help
+trapeze update-providers --help
 ```
 
 ## Metrics
 
-Crush records pseudonymous usage metrics (tied to a device-specific hash),
+Trapeze records pseudonymous usage metrics (tied to a device-specific hash),
 which maintainers rely on to inform development and support priorities. The
 metrics include solely usage metadata; prompts and responses are NEVER
 collected.
 
-Details on exactly what’s collected are in the source code ([here](https://github.com/charmbracelet/crush/tree/main/internal/event)
-and [here](https://github.com/charmbracelet/crush/blob/main/internal/llm/agent/event.go)).
+Details on exactly what’s collected are in the source code ([here](https://github.com/amarbel-llc/trapeze/tree/main/internal/event)
+and [here](https://github.com/amarbel-llc/trapeze/blob/main/internal/llm/agent/event.go)).
 
 You can opt out of metrics collection at any time by setting the environment
 variable by setting the following in your environment:
 
 ```bash
-export CRUSH_DISABLE_METRICS=1
+export TRAPEZE_DISABLE_METRICS=1
 ```
 
 Or by setting the following in your config:
@@ -901,7 +777,7 @@ Or by setting the following in your config:
 }
 ```
 
-Crush also respects the [`DO_NOT_TRACK`](https://donottrack.sh/) convention
+Trapeze also respects the [`DO_NOT_TRACK`](https://donottrack.sh/) convention
 which can be enabled via `export DO_NOT_TRACK=1`.
 
 ## Q&A
@@ -919,7 +795,7 @@ Installing an extra tool might be needed on Unix-like environments.
 
 ## Contributing
 
-See the [contributing guide](https://github.com/charmbracelet/crush?tab=contributing-ov-file#contributing).
+See the [contributing guide](https://github.com/amarbel-llc/trapeze?tab=contributing-ov-file#contributing).
 
 ## Whatcha think?
 
@@ -936,7 +812,7 @@ We’d love to hear your thoughts on this project. Need help? We gotchu. You can
 
 ## License
 
-[FSL-1.1-MIT](https://github.com/charmbracelet/crush/raw/main/LICENSE.md)
+[FSL-1.1-MIT](https://github.com/amarbel-llc/trapeze/raw/main/LICENSE.md)
 
 ---
 

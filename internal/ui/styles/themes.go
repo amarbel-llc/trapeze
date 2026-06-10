@@ -8,7 +8,7 @@ import "github.com/charmbracelet/x/exp/charmtone"
 func ThemeForProvider(providerID string) Styles {
 	switch providerID {
 	case "hyper":
-		return HypercrushObsidiana()
+		return HypertrapezeObsidiana()
 	default:
 		return CharmtonePantera()
 	}
@@ -52,8 +52,8 @@ func CharmtonePantera() Styles {
 	})
 }
 
-// HypercrushObsidiana returns the Hypercrush dark theme.
-func HypercrushObsidiana() Styles {
+// HypertrapezeObsidiana returns the Hypertrapeze dark theme.
+func HypertrapezeObsidiana() Styles {
 	return quickStyle(quickStyleOpts{
 		primary:   charmtone.Charple,
 		secondary: charmtone.Dolly,
