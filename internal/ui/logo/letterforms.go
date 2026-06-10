@@ -417,3 +417,97 @@ func stretchLetterformPart(s string, p letterformProps) string {
 	}
 	return lipgloss.JoinHorizontal(lipgloss.Top, parts...)
 }
+
+// LetterT renders the letter T in a stylized way. It takes an integer that
+// determines how many cells to stretch the letter. If the stretch is less than
+// 1, it defaults to no stretching.
+func LetterT(stretch bool) string {
+	// Here's what we're making:
+	//
+	// ▀▀█▀▀
+	//   █
+	//   ▀
+
+	bar := heredoc.Doc(`
+		▀
+
+	`)
+	stem := heredoc.Doc(`
+		█
+		█
+		▀
+	`)
+	stretchedBar := stretchLetterformPart(bar, letterformProps{
+		stretch:    stretch,
+		width:      2,
+		minStretch: 4,
+		maxStretch: 6,
+	})
+	return joinLetterform(
+		stretchedBar,
+		stem,
+		stretchedBar,
+	)
+}
+
+// LetterA renders the letter A in a stylized way. It takes an integer that
+// determines how many cells to stretch the letter. If the stretch is less than
+// 1, it defaults to no stretching.
+func LetterA(stretch bool) string {
+	// Here's what we're making:
+	//
+	// ▄▀▀▀▄
+	// █▀▀▀█
+	// ▀   ▀
+
+	side := heredoc.Doc(`
+		▄
+		█
+		▀
+	`)
+	middle := heredoc.Doc(`
+		▀
+		▀
+	`)
+	return joinLetterform(
+		side,
+		stretchLetterformPart(middle, letterformProps{
+			stretch:    stretch,
+			width:      3,
+			minStretch: 7,
+			maxStretch: 12,
+		}),
+		side,
+	)
+}
+
+// LetterZ renders the letter Z in a stylized way. It takes an integer that
+// determines how many cells to stretch the letter. If the stretch is less than
+// 1, it defaults to no stretching.
+func LetterZ(stretch bool) string {
+	// Here's what we're making:
+	//
+	// ▀▀▀▀█
+	//   ▄▀
+	// ▀▀▀▀▀
+
+	bars := heredoc.Doc(`
+		▀
+
+		▀
+	`)
+	right := heredoc.Doc(`
+		▀█
+		▄▀
+		▀▀
+	`)
+	return joinLetterform(
+		stretchLetterformPart(bars, letterformProps{
+			stretch:    stretch,
+			width:      3,
+			minStretch: 7,
+			maxStretch: 12,
+		}),
+		right,
+	)
+}

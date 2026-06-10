@@ -3,8 +3,8 @@ package model
 import (
 	"testing"
 
-	"github.com/charmbracelet/crush/internal/permission"
-	"github.com/charmbracelet/crush/internal/ui/dialog"
+	"github.com/amarbel-llc/trapeze/internal/permission"
+	"github.com/amarbel-llc/trapeze/internal/ui/dialog"
 	"github.com/stretchr/testify/require"
 )
 

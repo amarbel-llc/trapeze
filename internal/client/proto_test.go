@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/charmbracelet/crush/internal/proto"
-	"github.com/charmbracelet/crush/internal/pubsub"
+	"github.com/amarbel-llc/trapeze/internal/proto"
+	"github.com/amarbel-llc/trapeze/internal/pubsub"
 	"github.com/stretchr/testify/require"
 )
 

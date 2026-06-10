@@ -6,12 +6,12 @@ import (
 	"time"
 
 	"charm.land/fantasy"
-	"github.com/charmbracelet/crush/internal/agent"
-	"github.com/charmbracelet/crush/internal/agent/agenttest"
-	"github.com/charmbracelet/crush/internal/db"
-	"github.com/charmbracelet/crush/internal/message"
-	"github.com/charmbracelet/crush/internal/proto"
-	"github.com/charmbracelet/crush/internal/session"
+	"github.com/amarbel-llc/trapeze/internal/agent"
+	"github.com/amarbel-llc/trapeze/internal/agent/agenttest"
+	"github.com/amarbel-llc/trapeze/internal/db"
+	"github.com/amarbel-llc/trapeze/internal/message"
+	"github.com/amarbel-llc/trapeze/internal/proto"
+	"github.com/amarbel-llc/trapeze/internal/session"
 	"github.com/stretchr/testify/require"
 )
 

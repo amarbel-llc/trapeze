@@ -17,23 +17,23 @@ import (
 	"charm.land/fantasy"
 )
 
-const CrushLogsToolName = "crush_logs"
+const TrapezeLogsToolName = "trapeze_logs"
 
-//go:embed crush_logs.md.tpl
-var crushLogsDescriptionTmpl []byte
+//go:embed trapeze_logs.md.tpl
+var trapezeLogsDescriptionTmpl []byte
 
-var crushLogsDescriptionTpl = template.Must(
-	template.New("crushLogsDescription").
-		Parse(string(crushLogsDescriptionTmpl)),
+var trapezeLogsDescriptionTpl = template.Must(
+	template.New("trapezeLogsDescription").
+		Parse(string(trapezeLogsDescriptionTmpl)),
 )
 
-type crushLogsDescriptionData struct {
+type trapezeLogsDescriptionData struct {
 	DefaultLines int
 	MaxLines     int
 }
 
-func crushLogsDescription() string {
-	return renderTemplate(crushLogsDescriptionTpl, crushLogsDescriptionData{
+func trapezeLogsDescription() string {
+	return renderTemplate(trapezeLogsDescriptionTpl, trapezeLogsDescriptionData{
 		DefaultLines: defaultLogLines,
 		MaxLines:     maxLogLines,
 	})
@@ -69,23 +69,23 @@ var sensitiveKeys = []string{
 	"credential",
 }
 
-type CrushLogsParams struct {
+type TrapezeLogsParams struct {
 	Lines int `json:"lines,omitempty" description:"Number of recent log entries to return (default 50, max 100)"`
 }
 
-func NewCrushLogsTool(logFile string) fantasy.AgentTool {
+func NewTrapezeLogsTool(logFile string) fantasy.AgentTool {
 	return fantasy.NewAgentTool(
-		CrushLogsToolName,
-		crushLogsDescription(),
-		func(ctx context.Context, params CrushLogsParams, call fantasy.ToolCall) (fantasy.ToolResponse, error) {
-			result := runCrushLogs(logFile, params)
+		TrapezeLogsToolName,
+		trapezeLogsDescription(),
+		func(ctx context.Context, params TrapezeLogsParams, call fantasy.ToolCall) (fantasy.ToolResponse, error) {
+			result := runTrapezeLogs(logFile, params)
 			return fantasy.NewTextResponse(result), nil
 		},
 	)
 }
 
-// runCrushLogs reads and formats the last N log entries from the given file.
-func runCrushLogs(logFile string, params CrushLogsParams) string {
+// runTrapezeLogs reads and formats the last N log entries from the given file.
+func runTrapezeLogs(logFile string, params TrapezeLogsParams) string {
 	// Validate and clamp the lines parameter.
 	lines := params.Lines
 	if lines <= 0 {

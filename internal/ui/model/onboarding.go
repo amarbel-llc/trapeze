@@ -9,9 +9,9 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
-	"github.com/charmbracelet/crush/internal/home"
-	"github.com/charmbracelet/crush/internal/ui/common"
-	"github.com/charmbracelet/crush/internal/ui/util"
+	"github.com/amarbel-llc/trapeze/internal/home"
+	"github.com/amarbel-llc/trapeze/internal/ui/common"
+	"github.com/amarbel-llc/trapeze/internal/ui/util"
 )
 
 // markProjectInitializedCmd marks the current project as initialized in the config.

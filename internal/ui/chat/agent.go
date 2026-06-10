@@ -7,10 +7,10 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"charm.land/lipgloss/v2/tree"
-	"github.com/charmbracelet/crush/internal/agent"
-	"github.com/charmbracelet/crush/internal/message"
-	"github.com/charmbracelet/crush/internal/ui/anim"
-	"github.com/charmbracelet/crush/internal/ui/styles"
+	"github.com/amarbel-llc/trapeze/internal/agent"
+	"github.com/amarbel-llc/trapeze/internal/message"
+	"github.com/amarbel-llc/trapeze/internal/ui/anim"
+	"github.com/amarbel-llc/trapeze/internal/ui/styles"
 )
 
 // -----------------------------------------------------------------------------

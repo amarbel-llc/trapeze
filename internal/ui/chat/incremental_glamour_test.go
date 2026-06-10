@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"charm.land/glamour/v2"
-	"github.com/charmbracelet/crush/internal/ui/styles"
+	"github.com/amarbel-llc/trapeze/internal/ui/styles"
 	"github.com/stretchr/testify/require"
 )
 

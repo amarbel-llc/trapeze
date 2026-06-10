@@ -1,15 +1,15 @@
-# Crush Development Guide
+# Trapeze Development Guide
 
 ## Project Overview
 
-Crush is a terminal-based AI coding assistant built in Go by
+Trapeze is a terminal-based AI coding assistant built in Go by
 [Charm](https://charm.land). It connects to LLMs and gives them tools to read,
 write, and execute code. It supports multiple providers (Anthropic, OpenAI,
 Gemini, Bedrock, Copilot, Hyper, MiniMax, Vercel, and more), integrates with
 LSPs for code intelligence, and supports extensibility via MCP servers and
 agent skills.
 
-The module path is `github.com/charmbracelet/crush`.
+The module path is `github.com/amarbel-llc/trapeze`.
 
 ## Architecture
 
@@ -20,7 +20,7 @@ internal/
   cmd/                             CLI commands (root, run, login, models, stats, sessions)
   config/
     config.go                      Config struct, context file paths, agent definitions
-    load.go                        crush.json loading and validation
+    load.go                        trapeze.json loading and validation
     provider.go                    Provider configuration and model resolution
   agent/
     agent.go                       SessionAgent: runs LLM conversations per session
@@ -33,7 +33,7 @@ internal/
   hooks/                           Hook engine: runs user shell commands on hook events
     hooks.go                       Decision types, aggregation logic, event constants
     runner.go                      Parallel hook execution, timeout, dedup
-    input.go                       Stdin payload builder, env vars, stdout parsing (Crush + Claude Code compat)
+    input.go                       Stdin payload builder, env vars, stdout parsing (Trapeze + Claude Code compat)
   session/session.go               Session CRUD backed by SQLite
   message/                         Message model and content types
   db/                              SQLite via sqlc, with migrations
@@ -68,14 +68,14 @@ internal/
   `.md` description file in `internal/agent/tools/`.
 - **System prompts are Go templates**: `internal/agent/templates/*.md.tpl`
   with runtime data injected.
-- **Context files**: Crush reads AGENTS.md, CRUSH.md, CLAUDE.md, GEMINI.md
+- **Context files**: Trapeze reads AGENTS.md, TRAPEZE.md, CLAUDE.md, GEMINI.md
   (and `.local` variants) from the working directory for project-specific
   instructions.
 - **Persistence**: SQLite + sqlc. All queries live in `internal/db/sql/`,
   generated code in `internal/db/`. Migrations in `internal/db/migrations/`.
 - **Pub/sub**: `internal/pubsub` for decoupled communication between agent,
   UI, and services.
-- **Hooks**: User-defined shell commands in `crush.json` that fire before
+- **Hooks**: User-defined shell commands in `trapeze.json` that fire before
   tool execution. The engine (`internal/hooks/`) is independent of fantasy
   and agent — it takes inputs, runs commands, returns decisions. The
   `hookedTool` decorator in `internal/agent/hooked_tool.go` wraps tools at
@@ -101,7 +101,7 @@ path.
 
 - **Gate (all checks)**: `just validate` (= `nix flake check`: conformist +
   go-test + go-lint, in the build sandbox)
-- **Build**: `just build-nix` (= `nix build`; binary at `./result/bin/crush`)
+- **Build**: `just build-nix` (= `nix build`; binary at `./result/bin/trapeze`)
 - **Test**: `just test-go-nix` (full unit suite in the sandbox). Devshell
   loop: `just test-go` (`just test-go ./internal/config/` narrows to one
   package). The VCR agent suite is separate: `just test-agent`.
