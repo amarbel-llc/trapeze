@@ -520,6 +520,16 @@
           },
           "type": "array",
           "description": "List of skill names to disable and hide from the agent"
+        },
+        "plugin_dirs": {
+          "items": {
+            "type": "string",
+            "examples": [
+              "~/.local/share/trapeze/plugins/my-plugin"
+            ]
+          },
+          "type": "array",
+          "description": "Directories containing clown-protocol plugins (clown.json manifests). Declared HTTP MCP servers are launched at startup, health-checked, and registered as MCP servers; stdio entries register directly"
         }
       },
       "additionalProperties": false,

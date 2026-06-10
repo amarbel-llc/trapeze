@@ -35,11 +35,11 @@ import (
 	"github.com/amarbel-llc/trapeze/internal/fsext"
 	"github.com/amarbel-llc/trapeze/internal/history"
 	"github.com/amarbel-llc/trapeze/internal/home"
+	"github.com/amarbel-llc/trapeze/internal/jobs"
 	"github.com/amarbel-llc/trapeze/internal/message"
 	"github.com/amarbel-llc/trapeze/internal/permission"
 	"github.com/amarbel-llc/trapeze/internal/pubsub"
 	"github.com/amarbel-llc/trapeze/internal/session"
-	"github.com/amarbel-llc/trapeze/internal/skills"
 	"github.com/amarbel-llc/trapeze/internal/stringext"
 	"github.com/amarbel-llc/trapeze/internal/ui/anim"
 	"github.com/amarbel-llc/trapeze/internal/ui/attachments"
@@ -221,7 +221,7 @@ type UI struct {
 	}
 
 	// skills
-	skillStates []*skills.SkillState
+	jobStates []*jobs.JobState
 
 	// sidebarLogo keeps a cached version of the sidebar sidebarLogo.
 	sidebarLogo string
@@ -328,7 +328,7 @@ func New(com *common.Common, initialSessionID string, continueLast bool) *UI {
 		notifyWindowFocused: true,
 		initialSessionID:    initialSessionID,
 		continueLastSession: continueLast,
-		skillStates:         skills.GetLatestStates(),
+		jobStates:           jobs.GetLatestStates(),
 	}
 
 	status := NewStatus(com, ui)
@@ -658,8 +658,8 @@ func (m *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.renderPills()
 	case pubsub.Event[history.File]:
 		cmds = append(cmds, m.handleFileEvent(msg.Payload))
-	case pubsub.Event[skills.Event]:
-		m.skillStates = msg.Payload.States
+	case pubsub.Event[jobs.Event]:
+		m.jobStates = msg.Payload.States
 	case pubsub.Event[permission.PermissionRequest]:
 		if cmd := m.openPermissionsDialog(msg.Payload); cmd != nil {
 			cmds = append(cmds, cmd)
@@ -3774,9 +3774,9 @@ func (m *UI) drawSessionDetails(scr uv.Screen, area uv.Rectangle) {
 	sectionWidth := max(1, min(maxSectionWidth, width/4-2)) // account for spacing between sections
 	maxItemsPerSection := remainingHeight - 3               // Account for section title and spacing
 
-	skillsSection := m.skillsInfo(sectionWidth, maxItemsPerSection, false)
+	jobsSection := m.jobsInfo(sectionWidth, maxItemsPerSection, false)
 	filesSection := m.filesInfo(m.com.Workspace.WorkingDir(), sectionWidth, maxItemsPerSection, false)
-	sections := lipgloss.JoinHorizontal(lipgloss.Top, filesSection, " ", skillsSection)
+	sections := lipgloss.JoinHorizontal(lipgloss.Top, filesSection, " ", jobsSection)
 	uv.NewStyledString(
 		s.CompactDetails.View.
 			Width(area.Dx()).

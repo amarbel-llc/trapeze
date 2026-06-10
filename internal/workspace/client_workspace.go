@@ -15,6 +15,7 @@ import (
 	"github.com/amarbel-llc/trapeze/internal/client"
 	"github.com/amarbel-llc/trapeze/internal/config"
 	"github.com/amarbel-llc/trapeze/internal/history"
+	"github.com/amarbel-llc/trapeze/internal/jobs"
 	"github.com/amarbel-llc/trapeze/internal/log"
 	"github.com/amarbel-llc/trapeze/internal/lsp"
 	"github.com/amarbel-llc/trapeze/internal/message"
@@ -37,6 +38,7 @@ type ClientWorkspace struct {
 	mu     sync.RWMutex
 	ws     proto.Workspace
 	skills *skills.Manager
+	jobs   *jobs.Manager
 }
 
 // NewClientWorkspace creates a new ClientWorkspace that proxies all
@@ -53,10 +55,14 @@ func NewClientWorkspace(c *client.Client, ws proto.Workspace) *ClientWorkspace {
 	}
 	states := protoToSkillStates(ws.Skills)
 	mgr := skills.NewManager(nil, nil, states, skills.WithGlobalMirror())
+	// The jobs manager mirrors the server-side channel snapshot; it is
+	// never started here because the journal lives with the server.
+	jobsMgr := jobs.NewManager(protoToJobStates(ws.Jobs), jobs.WithGlobalMirror())
 	return &ClientWorkspace{
 		client: c,
 		ws:     ws,
 		skills: mgr,
+		jobs:   jobsMgr,
 	}
 }
 
@@ -744,6 +750,15 @@ func (w *ClientWorkspace) translateEvent(ev any) tea.Msg {
 			Type:    e.Type,
 			Payload: skills.Event{States: states},
 		}
+	case pubsub.Event[proto.JobsEvent]:
+		jobStates := protoToJobStates(e.Payload.States)
+		if w.jobs != nil {
+			w.jobs.SetLatestStates(jobStates)
+		}
+		return pubsub.Event[jobs.Event]{
+			Type:    e.Type,
+			Payload: jobs.Event{States: jobStates},
+		}
 	default:
 		slog.Warn("Unknown event type in translateEvent", "type", fmt.Sprintf("%T", ev))
 		return nil
@@ -906,6 +921,27 @@ func sessionToProto(s session.Session) proto.Session {
 // protoToSkillStates reconstructs internal skill state slices from
 // their wire representation. Non-empty Error strings are turned into
 // synthetic error values; the TUI never type-asserts on Err.
+func protoToJobStates(in []proto.JobState) []*jobs.JobState {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]*jobs.JobState, len(in))
+	for i, s := range in {
+		out[i] = &jobs.JobState{
+			ID:        s.ID,
+			Source:    s.Source,
+			From:      s.From,
+			State:     s.State,
+			Started:   s.Started,
+			Ended:     s.Ended,
+			Progress:  s.Progress,
+			Message:   s.Message,
+			ResultRef: s.ResultRef,
+		}
+	}
+	return out
+}
+
 func protoToSkillStates(in []proto.SkillState) []*skills.SkillState {
 	if len(in) == 0 {
 		return nil

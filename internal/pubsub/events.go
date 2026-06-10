@@ -26,6 +26,7 @@ const (
 	PayloadTypeAgentEvent             PayloadType = "agent_event"
 	PayloadTypeConfigChanged          PayloadType = "config_changed"
 	PayloadTypeSkillsEvent            PayloadType = "skills_event"
+	PayloadTypeJobsEvent              PayloadType = "jobs_event"
 	PayloadTypeRunComplete            PayloadType = "run_complete"
 )
 

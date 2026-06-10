@@ -41,9 +41,9 @@ func (m *UI) landingView() string {
 
 	sectionWidth := min(30, (width-2)/3)
 
-	skillsSection := m.skillsInfo(sectionWidth, max(1, remainingHeightArea.Dy()), false)
+	jobsSection := m.jobsInfo(sectionWidth, max(1, remainingHeightArea.Dy()), false)
 
-	content := skillsSection
+	content := jobsSection
 
 	return lipgloss.NewStyle().
 		Width(width).

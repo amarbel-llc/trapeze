@@ -28,6 +28,7 @@ import (
 	"github.com/amarbel-llc/trapeze/internal/config"
 	"github.com/amarbel-llc/trapeze/internal/db"
 	"github.com/amarbel-llc/trapeze/internal/event"
+	"github.com/amarbel-llc/trapeze/internal/jobs"
 	"github.com/amarbel-llc/trapeze/internal/lock"
 	trapezelog "github.com/amarbel-llc/trapeze/internal/log"
 	"github.com/amarbel-llc/trapeze/internal/projects"
@@ -311,7 +312,12 @@ func setupLocalWorkspace(cmd *cobra.Command) (workspace.Workspace, func(), error
 		skills.WithWorkingDir(discoveryCfg.WorkingDir),
 	)
 
-	appInstance, err := app.New(ctx, conn, store, skillsMgr)
+	// Job-wakeup channel watcher (clown RFC-0009). Local mode hosts a
+	// single workspace per process, so the manager mirrors to the
+	// package globals the TUI reads via jobs.GetLatestStates.
+	jobsMgr := jobs.NewManager(nil, jobs.WithGlobalMirror())
+
+	appInstance, err := app.New(ctx, conn, store, skillsMgr, jobsMgr)
 	if err != nil {
 		_ = conn.Close()
 		slog.Error("Failed to create app instance", "error", err)
