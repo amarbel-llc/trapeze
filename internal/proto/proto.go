@@ -26,6 +26,10 @@ type Workspace struct {
 	// creation time. Subsequent updates flow through the SSE event
 	// stream.
 	Skills []SkillState `json:"skills,omitempty"`
+	// Jobs carries the snapshot of the session's clown job-wakeup
+	// channel at workspace creation time. Subsequent updates flow
+	// through the SSE event stream.
+	Jobs []JobState `json:"jobs,omitempty"`
 }
 
 // Error represents an error response.

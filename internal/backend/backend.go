@@ -17,6 +17,7 @@ import (
 	"github.com/amarbel-llc/trapeze/internal/config"
 	"github.com/amarbel-llc/trapeze/internal/csync"
 	"github.com/amarbel-llc/trapeze/internal/db"
+	"github.com/amarbel-llc/trapeze/internal/jobs"
 	"github.com/amarbel-llc/trapeze/internal/proto"
 	"github.com/amarbel-llc/trapeze/internal/skills"
 	"github.com/amarbel-llc/trapeze/internal/ui/util"
@@ -103,6 +104,7 @@ type Workspace struct {
 	Cfg    *config.ConfigStore
 	Env    []string
 	Skills *skills.Manager
+	Jobs   *jobs.Manager
 
 	// resolvedPath is the path used as the dedup key in
 	// Backend.pathIndex. It is filepath.EvalSymlinks(filepath.Abs(Path))
@@ -294,7 +296,14 @@ func (b *Backend) CreateWorkspace(args proto.Workspace) (*Workspace, proto.Works
 		skills.WithWorkingDir(discoveryCfg.WorkingDir),
 	)
 
-	appWorkspace, err := app.New(b.ctx, conn, cfg, skillsMgr)
+	// The job channel is keyed by the server process's session
+	// identity (env-resolved), so every workspace observes the same
+	// channel; the manager is per-workspace anyway (no global mirror —
+	// same multi-workspace rule as skills) and only the first one wins
+	// the nudge socket, the rest poll.
+	jobsMgr := jobs.NewManager(nil)
+
+	appWorkspace, err := app.New(b.ctx, conn, cfg, skillsMgr, jobsMgr)
 	if err != nil {
 		return nil, proto.Workspace{}, fmt.Errorf("failed to create app workspace: %w", err)
 	}
@@ -307,6 +316,7 @@ func (b *Backend) CreateWorkspace(args proto.Workspace) (*Workspace, proto.Works
 		Cfg:          cfg,
 		Env:          args.Env,
 		Skills:       skillsMgr,
+		Jobs:         jobsMgr,
 		resolvedPath: key,
 		ctx:          wsCtx,
 		cancel:       wsCancel,
@@ -375,6 +385,29 @@ func skillsDiscoveryConfig(cfg *config.ConfigStore) skills.DiscoveryConfig {
 
 // skillStatesToProto converts internal skill discovery states into the
 // wire format.
+// jobStatesToProto converts job channel states into the wire form used
+// by the workspace snapshot.
+func jobStatesToProto(states []*jobs.JobState) []proto.JobState {
+	if len(states) == 0 {
+		return nil
+	}
+	out := make([]proto.JobState, len(states))
+	for i, s := range states {
+		out[i] = proto.JobState{
+			ID:        s.ID,
+			Source:    s.Source,
+			From:      s.From,
+			State:     s.State,
+			Started:   s.Started,
+			Ended:     s.Ended,
+			Progress:  s.Progress,
+			Message:   s.Message,
+			ResultRef: s.ResultRef,
+		}
+	}
+	return out
+}
+
 func skillStatesToProto(states []*skills.SkillState) []proto.SkillState {
 	if len(states) == 0 {
 		return nil
@@ -722,6 +755,9 @@ func workspaceToProto(ws *Workspace) proto.Workspace {
 	}
 	if ws.Skills != nil {
 		out.Skills = skillStatesToProto(ws.Skills.States())
+	}
+	if ws.Jobs != nil {
+		out.Jobs = jobStatesToProto(ws.Jobs.States())
 	}
 	return out
 }
