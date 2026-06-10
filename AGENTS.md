@@ -43,6 +43,8 @@ internal/
   ui/                              Bubble Tea v2 TUI (see internal/ui/AGENTS.md)
   permission/                      Tool permission checking and allow-lists
   skills/                          Skill file discovery and loading
+  jobs/                            Clown job-wakeup channel consumer (RFC-0009/0010)
+  pluginhost/                      Clown plugin protocol host (clown.json, RFC-0002)
   shell/                           Bash command execution with background job support
   event/                           Telemetry (PostHog)
   pubsub/                          Internal pub/sub for cross-component messaging
@@ -83,6 +85,44 @@ internal/
   `HOOKS.md` for the user-facing protocol.
 - **CGO disabled**: builds with `CGO_ENABLED=0` and
   `GOEXPERIMENT=greenteagc`.
+
+## Clown integration
+
+Two clown-ecosystem protocols are implemented natively (no clown binary
+required; both contracts are byte-compatible reimplementations):
+
+- **Job-wakeup channel** (`internal/jobs`, clown RFC-0009/0010): trapeze
+  watches its session's channel — JSONL journal under
+  `$XDG_STATE_HOME/clown/jobs/<channel>/` plus the lossy unixgram nudge
+  socket — APNs-style: the datagram is the push, the journal is the
+  durable truth reconciled on every push and on a 2s ticker. Each job is
+  rendered in the sidebar **Jobs** section (which replaced the Skills
+  section; the skills *system* is untouched). Trapeze is a display
+  surface only: it never writes ack cursors, and it yields the nudge
+  socket to a live `clown job-watch` monitor (polling instead). The
+  resolved session key is exported as `CLOWN_SESSION_ID` so producers
+  spawned by trapeze target this session; `CLOWN_DISABLE_JOB_WAKEUP=1`
+  is the kill switch. Event plumbing mirrors skills exactly:
+  `jobs.Manager` → app event fan-in → `proto.JobsEvent` over SSE →
+  client mirror → `pubsub.Event[jobs.Event]` in the TUI.
+
+- **Plugin protocol** (`internal/pluginhost`, clown RFC-0002): plugin
+  dirs from `options.plugin_dirs` (trapeze.json) and the
+  `TRAPEZE_PLUGIN_DIRS` env var (colon-separated, baked by `mkTrapeze`)
+  are scanned for `clown.json` manifests. Declared HTTP MCP servers are
+  launched at startup, announce themselves with the
+  `1|1|tcp|<addr>|<protocol>` stdout handshake, are health-polled, and
+  registered as URL-based MCP servers; `stdioServers` entries map
+  straight onto trapeze's native stdio MCP support. Servers live until
+  stdin closes; app shutdown tears them down. Manifest `monitors` are
+  ignored — the jobs channel is trapeze's monitor analog.
+
+The flake exports `lib.${system}.mkTrapeze` (modeled after clown's
+`mkCircus`): downstream flakes call it with `plugins` (clown-protocol
+plugin dirs) and optionally `clownBin` (exported as `CLOWN_BIN` so job
+producers like spinclass/moxy emit wakes) and get back
+`{ packages.default, devShells.default, checks }` with a wrapper that
+bakes the environment in.
 
 ## Build/Test/Lint Commands
 
