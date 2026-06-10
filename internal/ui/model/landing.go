@@ -30,7 +30,9 @@ func (m *UI) landingView() string {
 		cwd,
 	}
 
-	parts = append(parts, "", m.modelInfo(width))
+	if !m.isShellMode() {
+		parts = append(parts, "", m.modelInfo(width))
+	}
 	infoSection := lipgloss.JoinVertical(lipgloss.Left, parts...)
 
 	var remainingHeightArea image.Rectangle
@@ -41,9 +43,10 @@ func (m *UI) landingView() string {
 
 	sectionWidth := min(30, (width-2)/3)
 
-	skillsSection := m.skillsInfo(sectionWidth, max(1, remainingHeightArea.Dy()), false)
-
-	content := skillsSection
+	content := m.skillsInfo(sectionWidth, max(1, remainingHeightArea.Dy()), false)
+	if m.isShellMode() {
+		content = m.jobsInfo(sectionWidth, max(1, remainingHeightArea.Dy()), false)
+	}
 
 	return lipgloss.NewStyle().
 		Width(width).

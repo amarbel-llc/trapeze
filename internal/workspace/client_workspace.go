@@ -419,6 +419,12 @@ func (w *ClientWorkspace) WorkingDir() string {
 	return w.cached().Path
 }
 
+// ShellCwd falls back to the workspace working directory; shell mode is
+// not supported in client/server mode.
+func (w *ClientWorkspace) ShellCwd(sessionID string) string {
+	return w.WorkingDir()
+}
+
 func (w *ClientWorkspace) Resolver() config.VariableResolver {
 	return config.IdentityResolver()
 }

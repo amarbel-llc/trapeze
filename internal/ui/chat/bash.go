@@ -69,7 +69,14 @@ func (b *BashToolRenderContext) RenderTool(sty *styles.Styles, width int, opts *
 		toolParams = append(toolParams, "background", "true")
 	}
 
-	header := toolHeader(sty, opts.Status, "Bash", cappedWidth, opts.Compact, toolParams...)
+	// Shell mode reports non-zero exits via metadata so the header
+	// shows the error icon while the body keeps the full output.
+	headerStatus := opts.Status
+	if headerStatus == ToolStatusSuccess && meta.ExitCode != 0 {
+		headerStatus = ToolStatusError
+	}
+
+	header := toolHeader(sty, headerStatus, "Bash", cappedWidth, opts.Compact, toolParams...)
 	if opts.Compact {
 		return header
 	}

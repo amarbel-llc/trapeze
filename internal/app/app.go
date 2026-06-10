@@ -148,6 +148,12 @@ func New(ctx context.Context, conn *sql.DB, store *config.ConfigStore, skillsMgr
 		slog.Info("XMPP mode enabled; skipping coder agent initialization")
 		return app, nil
 	}
+	// Shell mode likewise runs no LLM coder agent; the workspace's AgentRun
+	// executes fish commands instead.
+	if cfg.Shell != nil {
+		slog.Info("Shell mode enabled; skipping coder agent initialization")
+		return app, nil
+	}
 	if err := app.InitCoderAgent(ctx); err != nil {
 		return nil, fmt.Errorf("failed to initialize coder agent: %w", err)
 	}

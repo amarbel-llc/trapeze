@@ -32,6 +32,7 @@ import (
 	"github.com/charmbracelet/crush/internal/app"
 	"github.com/charmbracelet/crush/internal/commands"
 	"github.com/charmbracelet/crush/internal/config"
+	"github.com/charmbracelet/crush/internal/fish"
 	"github.com/charmbracelet/crush/internal/fsext"
 	"github.com/charmbracelet/crush/internal/history"
 	"github.com/charmbracelet/crush/internal/home"
@@ -223,6 +224,10 @@ type UI struct {
 	// skills
 	skillStates []*skills.SkillState
 
+	// shellJobs tracks shell-mode background jobs for the sidebar,
+	// updated from the runner's JobEvent pubsub stream.
+	shellJobs []fish.JobSnapshot
+
 	// sidebarLogo keeps a cached version of the sidebar sidebarLogo.
 	sidebarLogo string
 
@@ -346,10 +351,14 @@ func New(com *common.Common, initialSessionID string, continueLast bool) *UI {
 
 	desiredState := uiLanding
 	desiredFocus := uiFocusEditor
-	if !com.Config().IsConfigured() {
-		desiredState = uiOnboarding
-	} else if n, _ := com.Workspace.ProjectNeedsInitialization(); n {
-		desiredState = uiInitialize
+	// Shell mode needs no provider onboarding or project initialization:
+	// there is no LLM behind the prompt.
+	if com.Config().Shell == nil {
+		if !com.Config().IsConfigured() {
+			desiredState = uiOnboarding
+		} else if n, _ := com.Workspace.ProjectNeedsInitialization(); n {
+			desiredState = uiInitialize
+		}
 	}
 
 	// set initial state
@@ -660,6 +669,8 @@ func (m *UI) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, m.handleFileEvent(msg.Payload))
 	case pubsub.Event[skills.Event]:
 		m.skillStates = msg.Payload.States
+	case pubsub.Event[fish.JobEvent]:
+		m.handleShellJobEvent(msg.Payload)
 	case pubsub.Event[permission.PermissionRequest]:
 		if cmd := m.openPermissionsDialog(msg.Payload); cmd != nil {
 			cmds = append(cmds, cmd)
@@ -1043,6 +1054,18 @@ func (m *UI) loadNestedToolCalls(items []chat.MessageItem) {
 	}
 }
 
+// filterExistingItems drops items that are already present in the chat
+// list. A fresh session's initial load (loadSession) races with message
+// Created events — both run as commands — and an assistant message
+// holding only tool calls has no item carrying the message's own ID, so
+// the msg.ID existence check in appendSessionMessage can't catch the
+// replay; checking each extracted item's ID is what actually dedupes.
+func (m *UI) filterExistingItems(items []chat.MessageItem) []chat.MessageItem {
+	return slices.DeleteFunc(items, func(item chat.MessageItem) bool {
+		return m.chat.MessageItem(item.ID()) != nil
+	})
+}
+
 // appendSessionMessage appends a new message to the current session in the chat
 // if the message is a tool result it will update the corresponding tool call message
 func (m *UI) appendSessionMessage(msg message.Message) tea.Cmd {
@@ -1057,7 +1080,7 @@ func (m *UI) appendSessionMessage(msg message.Message) tea.Cmd {
 	switch msg.Role {
 	case message.User:
 		m.lastUserMessageTime = msg.CreatedAt
-		items := chat.ExtractMessageItems(m.com.Styles, &msg, nil)
+		items := m.filterExistingItems(chat.ExtractMessageItems(m.com.Styles, &msg, nil))
 		for _, item := range items {
 			if animatable, ok := item.(chat.Animatable); ok {
 				if cmd := animatable.StartAnimation(); cmd != nil {
@@ -1070,7 +1093,7 @@ func (m *UI) appendSessionMessage(msg message.Message) tea.Cmd {
 			cmds = append(cmds, cmd)
 		}
 	case message.Assistant:
-		items := chat.ExtractMessageItems(m.com.Styles, &msg, nil)
+		items := m.filterExistingItems(chat.ExtractMessageItems(m.com.Styles, &msg, nil))
 		for _, item := range items {
 			if animatable, ok := item.(chat.Animatable); ok {
 				if cmd := animatable.StartAnimation(); cmd != nil {
@@ -3091,6 +3114,11 @@ var workingPlaceholders = [...]string{
 // randomizePlaceholders selects random placeholder text for the textarea's
 // ready and working states.
 func (m *UI) randomizePlaceholders() {
+	if m.isShellMode() {
+		m.readyPlaceholder = "Enter a fish command"
+		m.workingPlaceholder = "Running..."
+		return
+	}
 	m.workingPlaceholder = workingPlaceholders[rand.Intn(len(workingPlaceholders))]
 	m.readyPlaceholder = readyPlaceholders[rand.Intn(len(readyPlaceholders))]
 }
@@ -3176,7 +3204,14 @@ func (m *UI) sendMessage(content string, attachments ...message.Attachment) tea.
 
 	var cmds []tea.Cmd
 	if !m.hasSession() {
-		newSession, err := m.com.Workspace.CreateSession(context.Background(), "New Session")
+		title := "New Session"
+		if m.isShellMode() {
+			// Name the session after its first command so the session
+			// switcher reads like a list of shell tabs. Doing it at
+			// create time avoids racing loadSession with a rename.
+			title = shellSessionTitle(content)
+		}
+		newSession, err := m.com.Workspace.CreateSession(context.Background(), title)
 		if err != nil {
 			return util.ReportError(err)
 		}
