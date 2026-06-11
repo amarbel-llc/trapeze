@@ -22,6 +22,12 @@ func TestMain(m *testing.M) {
 		runFakeServer()
 		return
 	}
+	// Re-exec'd with PLUGINHOST_TEST_EXIT=1: die before any handshake
+	// (a sandbox-safe stand-in for /bin/false, which doesn't exist in
+	// the nix build sandbox).
+	if os.Getenv("PLUGINHOST_TEST_EXIT") == "1" {
+		os.Exit(1)
+	}
 	os.Exit(m.Run())
 }
 
@@ -164,11 +170,15 @@ func TestHostLaunchAndShutdown(t *testing.T) {
 }
 
 func TestHostLaunchFailsOnImmediateExit(t *testing.T) {
-	dir := writePluginDir(t, "brokenplugin",
-		`{"version":1,"httpServers":{"srv":{"command":"/bin/false"}}}`)
+	exe, err := os.Executable()
+	require.NoError(t, err)
+
+	dir := writePluginDir(t, "brokenplugin", fmt.Sprintf(
+		`{"version":1,"httpServers":{"srv":{"command":%q,"env":{"PLUGINHOST_TEST_EXIT":"1"}}}}`,
+		exe))
 
 	host := New()
 	defer host.Shutdown()
-	_, err := host.Launch(t.Context(), []string{dir})
+	_, err = host.Launch(t.Context(), []string{dir})
 	require.ErrorContains(t, err, "exited before handshake")
 }
