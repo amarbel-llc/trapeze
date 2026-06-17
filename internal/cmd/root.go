@@ -74,6 +74,7 @@ func init() {
 		statsCmd,
 		sessionCmd,
 		xmppBridgeCmd,
+		xmppAgentCmd,
 	)
 }
 
