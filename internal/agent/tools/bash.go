@@ -43,6 +43,11 @@ type BashResponseMetadata struct {
 	WorkingDirectory string `json:"working_directory"`
 	Background       bool   `json:"background,omitempty"`
 	ShellID          string `json:"shell_id,omitempty"`
+	// ExitCode is the command's exit status. Set by trapeze's shell
+	// mode so failed commands render with an error icon while keeping
+	// their full output visible (unlike IsError results, which collapse
+	// to a one-line error).
+	ExitCode int `json:"exit_code,omitempty"`
 }
 
 const (

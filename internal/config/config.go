@@ -586,6 +586,17 @@ type XMPP struct {
 	Insecure bool `json:"insecure,omitempty" jsonschema:"description=Skip TLS certificate verification (dev servers with self-signed certs only)"`
 }
 
+// Shell holds the configuration for trapeze's shell mode. When present
+// (non-nil), trapeze runs as an interactive shell modeled after an agent
+// harness: the editor is a single command entry bar, each submitted command
+// executes through fish and renders above as a tool use, and harness-managed
+// background jobs appear in the sidebar. No LLM coder agent is initialized.
+type Shell struct {
+	// Command is the fish binary to execute commands with. Defaults to
+	// "fish" resolved from PATH.
+	Command string `json:"command,omitempty" jsonschema:"description=Path to the fish binary used to execute commands (defaults to fish on PATH)"`
+}
+
 // Config holds the configuration for crush.
 type Config struct {
 	Schema string `json:"$schema,omitempty"`
@@ -607,6 +618,9 @@ type Config struct {
 
 	// XMPP, when set, switches trapeze into XMPP chat mode (see XMPP type).
 	XMPP *XMPP `json:"xmpp,omitempty" jsonschema:"description=XMPP chat-mode account configuration; when set, trapeze runs as an XMPP client instead of an LLM agent"`
+
+	// Shell, when set, switches trapeze into shell mode (see Shell type).
+	Shell *Shell `json:"shell,omitempty" jsonschema:"description=Shell-mode configuration; when set, trapeze runs as a fish-backed interactive shell instead of an LLM agent"`
 
 	Permissions *Permissions `json:"permissions,omitempty" jsonschema:"description=Permission settings for tool usage"`
 

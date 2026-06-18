@@ -29,6 +29,7 @@ import (
 	"github.com/charmbracelet/crush/internal/config"
 	"github.com/charmbracelet/crush/internal/db"
 	"github.com/charmbracelet/crush/internal/event"
+	"github.com/charmbracelet/crush/internal/fish"
 	"github.com/charmbracelet/crush/internal/lock"
 	crushlog "github.com/charmbracelet/crush/internal/log"
 	"github.com/charmbracelet/crush/internal/projects"
@@ -58,6 +59,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&clientHost, "host", "H", server.DefaultHost(), "Connect to a specific crush server host (for advanced users)")
 	rootCmd.Flags().BoolP("help", "h", false, "Help")
 	rootCmd.Flags().BoolP("yolo", "y", false, "Automatically accept all permissions (dangerous mode)")
+	rootCmd.Flags().Bool("shell", false, "Run as an interactive fish-backed shell (agent-harness UI)")
 	rootCmd.Flags().StringP("session", "s", "", "Continue a previous session by ID")
 	rootCmd.Flags().BoolP("continue", "C", false, "Continue the most recent session")
 	rootCmd.MarkFlagsMutuallyExclusive("session", "continue")
@@ -275,6 +277,16 @@ func setupLocalWorkspace(cmd *cobra.Command) (workspace.Workspace, func(), error
 	cfg := store.Config()
 	store.Overrides().SkipPermissionRequests = yolo
 
+	// --shell switches this launch into shell mode without requiring a
+	// crush.json entry. Must happen before app.New, which gates coder
+	// agent initialization on cfg.Shell.
+	if shellFlag, _ := cmd.Flags().GetBool("shell"); shellFlag && cfg.Shell == nil {
+		cfg.Shell = &config.Shell{}
+	}
+	if cfg.Shell != nil && cfg.XMPP != nil {
+		return nil, nil, errors.New("shell mode and xmpp mode are mutually exclusive; configure only one")
+	}
+
 	if err := os.MkdirAll(cfg.Options.DataDirectory, 0o700); err != nil {
 		return nil, nil, fmt.Errorf("failed to create data directory: %q %w", cfg.Options.DataDirectory, err)
 	}
@@ -324,6 +336,18 @@ func setupLocalWorkspace(cmd *cobra.Command) (workspace.Workspace, func(), error
 
 	ws := workspace.NewAppWorkspace(appInstance, store)
 	cleanup := func() { appInstance.Shutdown() }
+
+	// Shell mode: every submitted prompt is executed as a fish command and
+	// rendered as a tool use; background jobs surface in the sidebar. See
+	// internal/fish and AppWorkspace's shell.go.
+	if cfg.Shell != nil {
+		runner := fish.NewRunner(cfg.Shell.Command, store.WorkingDir())
+		if err := runner.CheckBin(); err != nil {
+			cleanup()
+			return nil, nil, err
+		}
+		ws.SetShellRunner(ctx, runner)
+	}
 
 	// XMPP chat mode: connect to the configured account. Each peer JID gets
 	// its own session (resolved lazily by the workspace), so inbound messages

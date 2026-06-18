@@ -136,7 +136,9 @@ func (m *UI) drawSidebar(scr uv.Screen, area uv.Rectangle) {
 	height := area.Dy()
 
 	title := t.Sidebar.SessionTitle.Width(width).MaxHeight(2).Render(m.session.Title)
-	cwd := common.PrettyPath(t, m.com.Workspace.WorkingDir(), width)
+	// In shell mode the session has its own working directory (cd
+	// persists per session); show that instead of the launch directory.
+	cwd := common.PrettyPath(t, m.com.Workspace.ShellCwd(m.session.ID), width)
 	sidebarLogo := m.sidebarLogo
 	if height < logoHeightBreakpoint {
 		sidebarLogo = logo.SmallRender(m.com.Styles, width, logo.Opts{
@@ -151,6 +153,17 @@ func (m *UI) drawSidebar(scr uv.Screen, area uv.Rectangle) {
 		"",
 		m.modelInfo(width),
 		"",
+	}
+	if m.isShellMode() {
+		// No model behind the prompt; jobs take the place of the
+		// files+skills sections.
+		blocks = []string{
+			sidebarLogo,
+			title,
+			"",
+			cwd,
+			"",
+		}
 	}
 
 	sidebarHeader := lipgloss.JoinVertical(
@@ -170,6 +183,23 @@ func (m *UI) drawSidebar(scr uv.Screen, area uv.Rectangle) {
 			continue
 		}
 		filesCount++
+	}
+
+	if m.isShellMode() {
+		jobsSection := m.jobsInfo(width, max(2, remainingHeight), true)
+		uv.NewStyledString(
+			lipgloss.NewStyle().
+				MaxWidth(width).
+				MaxHeight(height).
+				Render(
+					lipgloss.JoinVertical(
+						lipgloss.Left,
+						sidebarHeader,
+						jobsSection,
+					),
+				),
+		).Draw(scr, area)
+		return
 	}
 
 	skillsCount := len(m.skillStatusItems())

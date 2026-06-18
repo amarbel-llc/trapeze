@@ -129,6 +129,10 @@ type Workspace interface {
 	WorkingDir() string
 	Resolver() config.VariableResolver
 
+	// ShellCwd returns the shell working directory for a session in
+	// shell mode; outside shell mode it falls back to WorkingDir.
+	ShellCwd(sessionID string) string
+
 	// Config mutations (proxied to server in client mode)
 	UpdatePreferredModel(scope config.Scope, modelType config.SelectedModelType, model config.SelectedModel) error
 	SetCompactMode(scope config.Scope, enabled bool) error

@@ -14,6 +14,7 @@ import (
 	"github.com/charmbracelet/crush/internal/app"
 	"github.com/charmbracelet/crush/internal/commands"
 	"github.com/charmbracelet/crush/internal/config"
+	"github.com/charmbracelet/crush/internal/fish"
 	"github.com/charmbracelet/crush/internal/history"
 	"github.com/charmbracelet/crush/internal/lsp"
 	"github.com/charmbracelet/crush/internal/message"
@@ -44,6 +45,17 @@ type AppWorkspace struct {
 	// (TUI goroutine) both resolve sessions through it.
 	xmppMu       sync.Mutex
 	xmppSessions map[string]string
+
+	// shell, when non-nil, puts the workspace in shell mode: AgentRun
+	// executes the prompt as a fish command and synthesizes tool-use
+	// messages instead of running the LLM coordinator. See SetShellRunner
+	// and shell.go.
+	shell *fish.Runner
+
+	// shellBusy counts running foreground commands per session, guarded
+	// by shellMu. It backs AgentIsBusy/AgentIsSessionBusy in shell mode.
+	shellMu   sync.Mutex
+	shellBusy map[string]int
 }
 
 // NewAppWorkspace creates a new AppWorkspace wrapping the given app
@@ -53,6 +65,7 @@ func NewAppWorkspace(a *app.App, store *config.ConfigStore) *AppWorkspace {
 		app:          a,
 		store:        store,
 		xmppSessions: make(map[string]string),
+		shellBusy:    make(map[string]int),
 	}
 }
 
@@ -197,6 +210,11 @@ func (w *AppWorkspace) ListAllUserMessages(ctx context.Context) ([]message.Messa
 // -- Agent --
 
 func (w *AppWorkspace) AgentRun(ctx context.Context, sessionID, prompt string, attachments ...message.Attachment) error {
+	// Shell mode: execute the prompt as a fish command. See shell.go.
+	if w.shell != nil {
+		return w.shellRun(ctx, sessionID, prompt)
+	}
+
 	// XMPP mode: send to the active conversation's peer and persist our side.
 	// The peer is the session Title when it is a JID (i.e. a real conversation,
 	// inbound-created or already retitled). For a generic session (a fresh
@@ -253,12 +271,19 @@ func (w *AppWorkspace) AgentRun(ctx context.Context, sessionID, prompt string, a
 }
 
 func (w *AppWorkspace) AgentCancel(sessionID string) {
+	if w.shell != nil {
+		w.shell.CancelSession(sessionID)
+		return
+	}
 	if w.app.AgentCoordinator != nil {
 		w.app.AgentCoordinator.Cancel(sessionID)
 	}
 }
 
 func (w *AppWorkspace) AgentIsBusy() bool {
+	if w.shell != nil {
+		return w.shellIsBusy()
+	}
 	if w.app.AgentCoordinator == nil {
 		return false
 	}
@@ -266,6 +291,9 @@ func (w *AppWorkspace) AgentIsBusy() bool {
 }
 
 func (w *AppWorkspace) AgentIsSessionBusy(sessionID string) bool {
+	if w.shell != nil {
+		return w.shellIsSessionBusy(sessionID)
+	}
 	if w.app.AgentCoordinator == nil {
 		return false
 	}
@@ -287,6 +315,10 @@ func (w *AppWorkspace) AgentIsReady() bool {
 	// In XMPP mode the connected session is what "ready" means; there is no
 	// coordinator. This gates ui.sendMessage, so it must be true to send.
 	if w.xmpp != nil {
+		return true
+	}
+	// Same for shell mode: a runner means commands can be executed.
+	if w.shell != nil {
 		return true
 	}
 	return w.app.AgentCoordinator != nil
@@ -324,8 +356,8 @@ func (w *AppWorkspace) UpdateAgentModel(ctx context.Context) error {
 }
 
 func (w *AppWorkspace) InitCoderAgent(ctx context.Context) error {
-	// No LLM agent in XMPP mode.
-	if w.xmpp != nil {
+	// No LLM agent in XMPP or shell mode.
+	if w.xmpp != nil || w.shell != nil {
 		return nil
 	}
 	return w.app.InitCoderAgent(ctx)

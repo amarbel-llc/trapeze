@@ -82,6 +82,14 @@
           "$ref": "#/$defs/Options",
           "description": "General application options"
         },
+        "xmpp": {
+          "$ref": "#/$defs/XMPP",
+          "description": "XMPP chat-mode account configuration; when set"
+        },
+        "shell": {
+          "$ref": "#/$defs/Shell",
+          "description": "Shell-mode configuration; when set"
+        },
         "permissions": {
           "$ref": "#/$defs/Permissions",
           "description": "Permission settings for tool usage"
@@ -704,6 +712,16 @@
         "provider"
       ]
     },
+    "Shell": {
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "Path to the fish binary used to execute commands (defaults to fish on PATH)"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
     "TUIOptions": {
       "properties": {
         "compact_mode": {
@@ -795,6 +813,32 @@
         },
         "grep": {
           "$ref": "#/$defs/ToolGrep"
+        }
+      },
+      "additionalProperties": false,
+      "type": "object"
+    },
+    "XMPP": {
+      "properties": {
+        "jid": {
+          "type": "string",
+          "description": "The user's own XMPP JID (e.g. alice@example.net)"
+        },
+        "password": {
+          "type": "string",
+          "description": "XMPP account password (SASL)"
+        },
+        "server": {
+          "type": "string",
+          "description": "Optional host:port server override; defaults to SRV resolution of the JID domain"
+        },
+        "contact": {
+          "type": "string",
+          "description": "Default peer JID for new outbound conversations (e.g. bob@example.net)"
+        },
+        "insecure": {
+          "type": "boolean",
+          "description": "Skip TLS certificate verification (dev servers with self-signed certs only)"
         }
       },
       "additionalProperties": false,
