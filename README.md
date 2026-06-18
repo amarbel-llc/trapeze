@@ -8,7 +8,7 @@
 
 > [!NOTE]
 > Trapeze is amarbel-llc's fork of [charmbracelet/crush](https://github.com/charmbracelet/crush),
-> renamed from `trapeze` to `trapeze` (see trapeze#1). Upstream documentation
+> renamed from `crush` to `trapeze` (see trapeze#1). Upstream documentation
 > largely still applies; identity-bearing names (binary, module path, config
 > dirs, env vars) are `trapeze`/`TRAPEZE_*` here.
 

@@ -383,8 +383,6 @@ func skillsDiscoveryConfig(cfg *config.ConfigStore) skills.DiscoveryConfig {
 	}
 }
 
-// skillStatesToProto converts internal skill discovery states into the
-// wire format.
 // jobStatesToProto converts job channel states into the wire form used
 // by the workspace snapshot.
 func jobStatesToProto(states []*jobs.JobState) []proto.JobState {
@@ -408,6 +406,8 @@ func jobStatesToProto(states []*jobs.JobState) []proto.JobState {
 	return out
 }
 
+// skillStatesToProto converts internal skill discovery states into the
+// wire format.
 func skillStatesToProto(states []*skills.SkillState) []proto.SkillState {
 	if len(states) == 0 {
 		return nil
