@@ -1,15 +1,15 @@
-# Crush Development Guide
+# Trapeze Development Guide
 
 ## Project Overview
 
-Crush is a terminal-based AI coding assistant built in Go by
+Trapeze is a terminal-based AI coding assistant built in Go by
 [Charm](https://charm.land). It connects to LLMs and gives them tools to read,
 write, and execute code. It supports multiple providers (Anthropic, OpenAI,
 Gemini, Bedrock, Copilot, Hyper, MiniMax, Vercel, and more), integrates with
 LSPs for code intelligence, and supports extensibility via MCP servers and
 agent skills.
 
-The module path is `github.com/charmbracelet/crush`.
+The module path is `github.com/amarbel-llc/trapeze`.
 
 ## Architecture
 
@@ -20,7 +20,7 @@ internal/
   cmd/                             CLI commands (root, run, login, models, stats, sessions)
   config/
     config.go                      Config struct, context file paths, agent definitions
-    load.go                        crush.json loading and validation
+    load.go                        trapeze.json loading and validation
     provider.go                    Provider configuration and model resolution
   agent/
     agent.go                       SessionAgent: runs LLM conversations per session
@@ -33,7 +33,7 @@ internal/
   hooks/                           Hook engine: runs user shell commands on hook events
     hooks.go                       Decision types, aggregation logic, event constants
     runner.go                      Parallel hook execution, timeout, dedup
-    input.go                       Stdin payload builder, env vars, stdout parsing (Crush + Claude Code compat)
+    input.go                       Stdin payload builder, env vars, stdout parsing (Trapeze + Claude Code compat)
   session/session.go               Session CRUD backed by SQLite
   message/                         Message model and content types
   db/                              SQLite via sqlc, with migrations
@@ -43,6 +43,8 @@ internal/
   ui/                              Bubble Tea v2 TUI (see internal/ui/AGENTS.md)
   permission/                      Tool permission checking and allow-lists
   skills/                          Skill file discovery and loading
+  jobs/                            Clown job-wakeup channel consumer (RFC-0009/0010)
+  pluginhost/                      Clown plugin protocol host (clown.json, RFC-0002)
   shell/                           Bash command execution with background job support
   event/                           Telemetry (PostHog)
   pubsub/                          Internal pub/sub for cross-component messaging
@@ -68,14 +70,14 @@ internal/
   `.md` description file in `internal/agent/tools/`.
 - **System prompts are Go templates**: `internal/agent/templates/*.md.tpl`
   with runtime data injected.
-- **Context files**: Crush reads AGENTS.md, CRUSH.md, CLAUDE.md, GEMINI.md
+- **Context files**: Trapeze reads AGENTS.md, TRAPEZE.md, CLAUDE.md, GEMINI.md
   (and `.local` variants) from the working directory for project-specific
   instructions.
 - **Persistence**: SQLite + sqlc. All queries live in `internal/db/sql/`,
   generated code in `internal/db/`. Migrations in `internal/db/migrations/`.
 - **Pub/sub**: `internal/pubsub` for decoupled communication between agent,
   UI, and services.
-- **Hooks**: User-defined shell commands in `crush.json` that fire before
+- **Hooks**: User-defined shell commands in `trapeze.json` that fire before
   tool execution. The engine (`internal/hooks/`) is independent of fantasy
   and agent — it takes inputs, runs commands, returns decisions. The
   `hookedTool` decorator in `internal/agent/hooked_tool.go` wraps tools at
@@ -83,6 +85,44 @@ internal/
   `HOOKS.md` for the user-facing protocol.
 - **CGO disabled**: builds with `CGO_ENABLED=0` and
   `GOEXPERIMENT=greenteagc`.
+
+## Clown integration
+
+Two clown-ecosystem protocols are implemented natively (no clown binary
+required; both contracts are byte-compatible reimplementations):
+
+- **Job-wakeup channel** (`internal/jobs`, clown RFC-0009/0010): trapeze
+  watches its session's channel — JSONL journal under
+  `$XDG_STATE_HOME/clown/jobs/<channel>/` plus the lossy unixgram nudge
+  socket — APNs-style: the datagram is the push, the journal is the
+  durable truth reconciled on every push and on a 2s ticker. Each job is
+  rendered in the sidebar **Jobs** section (which replaced the Skills
+  section; the skills *system* is untouched). Trapeze is a display
+  surface only: it never writes ack cursors, and it yields the nudge
+  socket to a live `clown job-watch` monitor (polling instead). The
+  resolved session key is exported as `CLOWN_SESSION_ID` so producers
+  spawned by trapeze target this session; `CLOWN_DISABLE_JOB_WAKEUP=1`
+  is the kill switch. Event plumbing mirrors skills exactly:
+  `jobs.Manager` → app event fan-in → `proto.JobsEvent` over SSE →
+  client mirror → `pubsub.Event[jobs.Event]` in the TUI.
+
+- **Plugin protocol** (`internal/pluginhost`, clown RFC-0002): plugin
+  dirs from `options.plugin_dirs` (trapeze.json) and the
+  `TRAPEZE_PLUGIN_DIRS` env var (colon-separated, baked by `mkTrapeze`)
+  are scanned for `clown.json` manifests. Declared HTTP MCP servers are
+  launched at startup, announce themselves with the
+  `1|1|tcp|<addr>|<protocol>` stdout handshake, are health-polled, and
+  registered as URL-based MCP servers; `stdioServers` entries map
+  straight onto trapeze's native stdio MCP support. Servers live until
+  stdin closes; app shutdown tears them down. Manifest `monitors` are
+  ignored — the jobs channel is trapeze's monitor analog.
+
+The flake exports `lib.${system}.mkTrapeze` (modeled after clown's
+`mkCircus`): downstream flakes call it with `plugins` (clown-protocol
+plugin dirs) and optionally `clownBin` (exported as `CLOWN_BIN` so job
+producers like spinclass/moxy emit wakes) and get back
+`{ packages.default, devShells.default, checks }` with a wrapper that
+bakes the environment in.
 
 ## Build/Test/Lint Commands
 
@@ -101,7 +141,7 @@ path.
 
 - **Gate (all checks)**: `just validate` (= `nix flake check`: conformist +
   go-test + go-lint, in the build sandbox)
-- **Build**: `just build-nix` (= `nix build`; binary at `./result/bin/crush`)
+- **Build**: `just build-nix` (= `nix build`; binary at `./result/bin/trapeze`)
 - **Test**: `just test-go-nix` (full unit suite in the sandbox). Devshell
   loop: `just test-go` (`just test-go ./internal/config/` narrows to one
   package). The VCR agent suite is separate: `just test-agent`.

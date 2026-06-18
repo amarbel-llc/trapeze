@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/charmbracelet/crush/internal/env"
+	"github.com/amarbel-llc/trapeze/internal/env"
 	"github.com/stretchr/testify/require"
 )
 

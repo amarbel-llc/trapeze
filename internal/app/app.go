@@ -18,27 +18,29 @@ import (
 	"charm.land/catwalk/pkg/catwalk"
 	"charm.land/fantasy"
 	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/crush/internal/agent"
-	"github.com/charmbracelet/crush/internal/agent/notify"
-	"github.com/charmbracelet/crush/internal/agent/tools/mcp"
-	"github.com/charmbracelet/crush/internal/config"
-	"github.com/charmbracelet/crush/internal/db"
-	"github.com/charmbracelet/crush/internal/event"
-	"github.com/charmbracelet/crush/internal/filetracker"
-	"github.com/charmbracelet/crush/internal/format"
-	"github.com/charmbracelet/crush/internal/history"
-	"github.com/charmbracelet/crush/internal/log"
-	"github.com/charmbracelet/crush/internal/lsp"
-	"github.com/charmbracelet/crush/internal/message"
-	"github.com/charmbracelet/crush/internal/permission"
-	"github.com/charmbracelet/crush/internal/pubsub"
-	"github.com/charmbracelet/crush/internal/session"
-	"github.com/charmbracelet/crush/internal/shell"
-	"github.com/charmbracelet/crush/internal/skills"
-	"github.com/charmbracelet/crush/internal/ui/anim"
-	"github.com/charmbracelet/crush/internal/ui/styles"
-	"github.com/charmbracelet/crush/internal/update"
-	"github.com/charmbracelet/crush/internal/version"
+	"github.com/amarbel-llc/trapeze/internal/agent"
+	"github.com/amarbel-llc/trapeze/internal/agent/notify"
+	"github.com/amarbel-llc/trapeze/internal/agent/tools/mcp"
+	"github.com/amarbel-llc/trapeze/internal/config"
+	"github.com/amarbel-llc/trapeze/internal/db"
+	"github.com/amarbel-llc/trapeze/internal/event"
+	"github.com/amarbel-llc/trapeze/internal/filetracker"
+	"github.com/amarbel-llc/trapeze/internal/format"
+	"github.com/amarbel-llc/trapeze/internal/history"
+	"github.com/amarbel-llc/trapeze/internal/jobs"
+	"github.com/amarbel-llc/trapeze/internal/log"
+	"github.com/amarbel-llc/trapeze/internal/lsp"
+	"github.com/amarbel-llc/trapeze/internal/message"
+	"github.com/amarbel-llc/trapeze/internal/permission"
+	"github.com/amarbel-llc/trapeze/internal/pluginhost"
+	"github.com/amarbel-llc/trapeze/internal/pubsub"
+	"github.com/amarbel-llc/trapeze/internal/session"
+	"github.com/amarbel-llc/trapeze/internal/shell"
+	"github.com/amarbel-llc/trapeze/internal/skills"
+	"github.com/amarbel-llc/trapeze/internal/ui/anim"
+	"github.com/amarbel-llc/trapeze/internal/ui/styles"
+	"github.com/amarbel-llc/trapeze/internal/update"
+	"github.com/amarbel-llc/trapeze/internal/version"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/x/exp/charmtone"
 	"github.com/charmbracelet/x/term"
@@ -64,6 +66,11 @@ type App struct {
 
 	Skills *skills.Manager
 
+	// Jobs watches the session's clown job-wakeup channel (see
+	// internal/jobs). Owned by the caller like Skills; the App starts
+	// and stops its watcher.
+	Jobs *jobs.Manager
+
 	config *config.ConfigStore
 
 	serviceEventsWG *sync.WaitGroup
@@ -78,7 +85,7 @@ type App struct {
 	// runCompletions is the authoritative per-run completion signal,
 	// emitted once per top-level agent turn after all message
 	// updates have been flushed. Bridged into app.events so SSE
-	// subscribers (notably `crush run` in client/server mode) can
+	// subscribers (notably `trapeze run` in client/server mode) can
 	// drive their exit on a deterministic, payload-bearing event
 	// instead of guessing from message finish parts.
 	runCompletions *pubsub.Broker[notify.RunComplete]
@@ -87,8 +94,10 @@ type App struct {
 // New initializes a new application instance. skillsMgr carries the
 // per-workspace skill discovery results computed by the caller; the
 // caller is responsible for constructing it (typically via
-// skills.NewManager + skills.DiscoverFromConfig).
-func New(ctx context.Context, conn *sql.DB, store *config.ConfigStore, skillsMgr *skills.Manager) (*App, error) {
+// skills.NewManager + skills.DiscoverFromConfig). jobsMgr (may be nil)
+// watches the session's clown job-wakeup channel; New starts its
+// watcher on the app lifecycle and shuts it down with the app.
+func New(ctx context.Context, conn *sql.DB, store *config.ConfigStore, skillsMgr *skills.Manager, jobsMgr *jobs.Manager) (*App, error) {
 	q := db.New(conn)
 	sessions := session.NewService(q, conn)
 	messages := message.NewService(q)
@@ -108,6 +117,7 @@ func New(ctx context.Context, conn *sql.DB, store *config.ConfigStore, skillsMgr
 		FileTracker: filetracker.NewService(q),
 		LSPManager:  lsp.NewManager(store),
 		Skills:      skillsMgr,
+		Jobs:        jobsMgr,
 
 		globalCtx: ctx,
 
@@ -122,8 +132,38 @@ func New(ctx context.Context, conn *sql.DB, store *config.ConfigStore, skillsMgr
 
 	app.setupEvents()
 
+	if app.Jobs != nil {
+		app.Jobs.Start(ctx)
+		app.cleanupFuncs = append(app.cleanupFuncs, func(context.Context) error {
+			app.Jobs.Shutdown()
+			return nil
+		})
+	}
+
 	// Check for updates in the background.
 	go app.checkForUpdates(ctx)
+
+	// Launch clown-protocol plugins (clown.json manifests; see
+	// internal/pluginhost) and register their servers as MCP entries
+	// before the MCP clients initialize. A configured-but-broken plugin
+	// fails startup loudly rather than degrading silently.
+	if dirs := pluginhost.Dirs(cfg.Options.PluginDirs); len(dirs) > 0 {
+		host := pluginhost.New()
+		entries, err := host.Launch(ctx, dirs)
+		if err != nil {
+			return nil, fmt.Errorf("plugins: %w", err)
+		}
+		if store.Config().MCP == nil {
+			store.Config().MCP = config.MCPs{}
+		}
+		for _, e := range entries {
+			store.Config().MCP[e.Name] = pluginMCPConfig(e)
+		}
+		app.cleanupFuncs = append(app.cleanupFuncs, func(context.Context) error {
+			host.Shutdown()
+			return nil
+		})
+	}
 
 	go mcp.Initialize(ctx, app.Permissions, store)
 
@@ -514,6 +554,9 @@ func (app *App) setupEvents() {
 	if app.Skills != nil {
 		setupSubscriber(ctx, app.serviceEventsWG, "skills", app.Skills.SubscribeEvents, app.events)
 	}
+	if app.Jobs != nil {
+		setupSubscriber(ctx, app.serviceEventsWG, "jobs", app.Jobs.SubscribeEvents, app.events)
+	}
 	cleanupFunc := func(context.Context) error {
 		cancel()
 		app.serviceEventsWG.Wait()
@@ -553,7 +596,7 @@ func setupSubscriber[T any](
 // app.events broker using PublishMustDeliver instead of Publish. Use
 // this for terminal events that subscribers cannot tolerate losing —
 // notably RunComplete, which is the authoritative end-of-run signal
-// for `crush run`. A lossy fan-in here can drop the only terminal
+// for `trapeze run`. A lossy fan-in here can drop the only terminal
 // event and hang non-interactive clients waiting on it.
 func setupSubscriberMustDeliver[T any](
 	ctx context.Context,
@@ -709,4 +752,29 @@ func (app *App) checkForUpdates(ctx context.Context) {
 		LatestVersion:  info.Latest,
 		IsDevelopment:  info.IsDevelopment(),
 	})
+}
+
+// pluginMCPConfig maps a launched plugin server onto trapeze's MCP
+// configuration shape.
+func pluginMCPConfig(e pluginhost.Entry) config.MCPConfig {
+	cfg := config.MCPConfig{}
+	switch e.Transport {
+	case "stdio":
+		cfg.Type = config.MCPStdio
+		cfg.Command = e.Command
+		cfg.Args = e.Args
+		cfg.Env = e.Env
+	case "sse":
+		cfg.Type = config.MCPSSE
+		cfg.URL = e.URL
+	default:
+		cfg.Type = config.MCPHttp
+		cfg.URL = e.URL
+	}
+	if e.TimeoutMS > 0 {
+		// clown.json carries milliseconds; trapeze's MCP timeout is
+		// seconds. Round up so sub-second values don't become 0.
+		cfg.Timeout = (e.TimeoutMS + 999) / 1000
+	}
+	return cfg
 }

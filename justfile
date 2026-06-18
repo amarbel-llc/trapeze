@@ -54,10 +54,10 @@ lint-go:
 build-nix:
   nix build --show-trace --print-build-logs
 
-# Fast devshell build (no nix sandbox). Output binary: ./crush.
+# Fast devshell build (no nix sandbox). Output binary: ./trapeze.
 [group('build')]
 build-go:
-  go build -o crush .
+  go build -o trapeze .
 
 # Regenerate the sqlc query/model code under internal/db from
 # internal/db/{migrations,sql}. Config: ./sqlc.yaml.
@@ -96,7 +96,7 @@ test-lint-nix:
   nix build -L --no-link ".#checks.{{system}}.go-lint"
 
 # Fast devshell Go test loop (-race), excluding the VCR agent suite (which
-# needs network + CRUSH_HYPER_API_KEY — see test-agent). Unlike the nix gate
+# needs network + TRAPEZE_HYPER_API_KEY — see test-agent). Unlike the nix gate
 # (which also excludes internal/shell, whose binary-passthrough test fails on
 # the sandbox's store-linked coreutils), this devshell lane KEEPS
 # internal/shell — that test runs fine against the host's real PATH.
@@ -106,7 +106,7 @@ test-go pkgs='./...':
   go test -race -failfast $(go list {{pkgs}} | grep -vE '/internal/agent($|/)')
 
 # Run the VCR-cassette agent suite (internal/agent) in the devshell. Replays
-# cassettes in internal/agent/testdata; needs CRUSH_HYPER_API_KEY only when
+# cassettes in internal/agent/testdata; needs TRAPEZE_HYPER_API_KEY only when
 # re-recording (see test-record). Excluded from the nix gate; see
 # trapeze#agent-test-lane.
 [group('post-build')]
@@ -138,32 +138,32 @@ update-gomod2nix:
   fi
 
 # Re-record the VCR cassettes for the agent suite (hits hyper.charm.land — set
-# CRUSH_HYPER_API_KEY first). Mirrors the old Taskfile `test:record`.
+# TRAPEZE_HYPER_API_KEY first). Mirrors the old Taskfile `test:record`.
 [group('maintenance')]
 update-cassettes:
   rm -rf internal/agent/testdata
   go test -v -count=1 -timeout=1h ./internal/agent
 
-# Bump the crushVersion string in flake.nix.
+# Bump the trapezeVersion string in flake.nix.
 [group('maintenance')]
 bump-version new_version:
   #!/usr/bin/env bash
   set -euo pipefail
-  current=$(grep 'crushVersion = "' flake.nix | head -1 | sed 's/.*"\(.*\)".*/\1/')
+  current=$(grep 'trapezeVersion = "' flake.nix | head -1 | sed 's/.*"\(.*\)".*/\1/')
   if [[ "$current" == "{{new_version}}" ]]; then
     echo "already at {{new_version}}" >&2
     exit 0
   fi
-  sed -i.bak 's/crushVersion = "'"$current"'"/crushVersion = "{{new_version}}"/' flake.nix && rm flake.nix.bak
+  sed -i.bak 's/trapezeVersion = "'"$current"'"/trapezeVersion = "{{new_version}}"/' flake.nix && rm flake.nix.bak
   echo "$current → {{new_version}}"
 
-# Create a signed git tag for the current crushVersion and push it to origin.
+# Create a signed git tag for the current trapezeVersion and push it to origin.
 # Release artifacts are built by goreleaser (.goreleaser.yml) off the tag.
 [group('maintenance')]
 deploy-tag:
   #!/usr/bin/env bash
   set -euo pipefail
-  version=$(grep 'crushVersion = "' flake.nix | head -1 | sed 's/.*"\(.*\)".*/\1/')
+  version=$(grep 'trapezeVersion = "' flake.nix | head -1 | sed 's/.*"\(.*\)".*/\1/')
   tag="v${version}"
   if git rev-parse "$tag" >/dev/null 2>&1; then
     echo "tag $tag already exists" >&2
@@ -184,4 +184,4 @@ run-dev *args:
 # Run with pprof profiling enabled (serves localhost:6060).
 [group('run')]
 run-profile *args:
-  CRUSH_PROFILE=true go run . {{args}}
+  TRAPEZE_PROFILE=true go run . {{args}}

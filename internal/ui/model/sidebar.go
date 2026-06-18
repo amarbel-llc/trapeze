@@ -6,8 +6,8 @@ import (
 	"image"
 
 	"charm.land/lipgloss/v2"
-	"github.com/charmbracelet/crush/internal/ui/common"
-	"github.com/charmbracelet/crush/internal/ui/logo"
+	"github.com/amarbel-llc/trapeze/internal/ui/common"
+	"github.com/amarbel-llc/trapeze/internal/ui/logo"
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/ultraviolet/layout"
 )
@@ -59,13 +59,13 @@ func (m *UI) modelInfo(width int) string {
 
 // getDynamicHeightLimits will give us the num of items to show in each section based on the height
 // some items are more important than others.
-func getDynamicHeightLimits(availableHeight, fileCount, skillCount int) (maxFiles, maxSkills int) {
+func getDynamicHeightLimits(availableHeight, fileCount, jobCount int) (maxFiles, maxJobs int) {
 	const (
 		minItemsPerSection = 2
 		// Keep these high so dynamic layout uses available sidebar space
 		// instead of hitting small hard limits.
 		defaultMaxFilesShown    = 1000
-		defaultMaxSkillsShown   = 1000
+		defaultMaxJobsShown     = 1000
 		minAvailableHeightLimit = 10
 	)
 
@@ -74,13 +74,13 @@ func getDynamicHeightLimits(availableHeight, fileCount, skillCount int) (maxFile
 	}
 
 	maxFiles = minItemsPerSection
-	maxSkills = minItemsPerSection
+	maxJobs = minItemsPerSection
 
 	remainingHeight := max(0, availableHeight-(minItemsPerSection*2))
 
-	sectionValues := []*int{&maxFiles, &maxSkills}
-	sectionCaps := []int{defaultMaxFilesShown, defaultMaxSkillsShown}
-	sectionNeeds := []int{max(0, fileCount-maxFiles), max(0, skillCount-maxSkills)}
+	sectionValues := []*int{&maxFiles, &maxJobs}
+	sectionCaps := []int{defaultMaxFilesShown, defaultMaxJobsShown}
+	sectionNeeds := []int{max(0, fileCount-maxFiles), max(0, jobCount-maxJobs)}
 
 	for remainingHeight > 0 {
 		allocated := false
@@ -119,11 +119,11 @@ func getDynamicHeightLimits(availableHeight, fileCount, skillCount int) (maxFile
 		}
 	}
 
-	return maxFiles, maxSkills
+	return maxFiles, maxJobs
 }
 
 // sidebar renders the chat sidebar containing session title, working
-// directory, model info, file list, and skills.
+// directory, model info, file list, and jobs.
 func (m *UI) drawSidebar(scr uv.Screen, area uv.Rectangle) {
 	if m.session == nil {
 		return
@@ -172,11 +172,11 @@ func (m *UI) drawSidebar(scr uv.Screen, area uv.Rectangle) {
 		filesCount++
 	}
 
-	skillsCount := len(m.skillStatusItems())
+	jobsCount := len(m.jobStatusItems())
 
-	maxFiles, maxSkills := getDynamicHeightLimits(remainingHeight, filesCount, skillsCount)
+	maxFiles, maxJobs := getDynamicHeightLimits(remainingHeight, filesCount, jobsCount)
 
-	skillsSection := m.skillsInfo(width, maxSkills, true)
+	jobsSection := m.jobsInfo(width, maxJobs, true)
 	filesSection := m.filesInfo(m.com.Workspace.WorkingDir(), width, maxFiles, true)
 
 	uv.NewStyledString(
@@ -189,7 +189,7 @@ func (m *UI) drawSidebar(scr uv.Screen, area uv.Rectangle) {
 					sidebarHeader,
 					filesSection,
 					"",
-					skillsSection,
+					jobsSection,
 				),
 			),
 	).Draw(scr, area)

@@ -6,17 +6,18 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/charmbracelet/crush/internal/agent/notify"
-	"github.com/charmbracelet/crush/internal/agent/tools/mcp"
-	"github.com/charmbracelet/crush/internal/app"
-	"github.com/charmbracelet/crush/internal/backend"
-	"github.com/charmbracelet/crush/internal/history"
-	"github.com/charmbracelet/crush/internal/message"
-	"github.com/charmbracelet/crush/internal/permission"
-	"github.com/charmbracelet/crush/internal/proto"
-	"github.com/charmbracelet/crush/internal/pubsub"
-	"github.com/charmbracelet/crush/internal/session"
-	"github.com/charmbracelet/crush/internal/skills"
+	"github.com/amarbel-llc/trapeze/internal/agent/notify"
+	"github.com/amarbel-llc/trapeze/internal/agent/tools/mcp"
+	"github.com/amarbel-llc/trapeze/internal/app"
+	"github.com/amarbel-llc/trapeze/internal/backend"
+	"github.com/amarbel-llc/trapeze/internal/history"
+	"github.com/amarbel-llc/trapeze/internal/jobs"
+	"github.com/amarbel-llc/trapeze/internal/message"
+	"github.com/amarbel-llc/trapeze/internal/permission"
+	"github.com/amarbel-llc/trapeze/internal/proto"
+	"github.com/amarbel-llc/trapeze/internal/pubsub"
+	"github.com/amarbel-llc/trapeze/internal/session"
+	"github.com/amarbel-llc/trapeze/internal/skills"
 )
 
 // wrapEvent converts a raw tea.Msg (a pubsub.Event[T] from the app
@@ -118,6 +119,11 @@ func wrapEvent(ev any) *pubsub.Payload {
 		return envelope(pubsub.PayloadTypeSkillsEvent, pubsub.Event[proto.SkillsEvent]{
 			Type:    e.Type,
 			Payload: skillsEventToProto(e.Payload),
+		})
+	case pubsub.Event[jobs.Event]:
+		return envelope(pubsub.PayloadTypeJobsEvent, pubsub.Event[proto.JobsEvent]{
+			Type:    e.Type,
+			Payload: jobsEventToProto(e.Payload),
 		})
 	default:
 		slog.Warn("Unrecognized event type for SSE wrapping", "type", fmt.Sprintf("%T", ev))
@@ -292,6 +298,28 @@ func skillsEventToProto(e skills.Event) proto.SkillsEvent {
 			entry.Error = s.Err.Error()
 		}
 		out.States[i] = entry
+	}
+	return out
+}
+
+// jobsEventToProto converts a jobs.Event into its wire form.
+func jobsEventToProto(e jobs.Event) proto.JobsEvent {
+	if len(e.States) == 0 {
+		return proto.JobsEvent{}
+	}
+	out := proto.JobsEvent{States: make([]proto.JobState, len(e.States))}
+	for i, s := range e.States {
+		out.States[i] = proto.JobState{
+			ID:        s.ID,
+			Source:    s.Source,
+			From:      s.From,
+			State:     s.State,
+			Started:   s.Started,
+			Ended:     s.Ended,
+			Progress:  s.Progress,
+			Message:   s.Message,
+			ResultRef: s.ResultRef,
+		}
 	}
 	return out
 }
