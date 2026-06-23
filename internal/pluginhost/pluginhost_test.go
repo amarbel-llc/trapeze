@@ -141,7 +141,8 @@ func TestHostLaunchAndShutdown(t *testing.T) {
 
 	dir := writePluginDir(t, "fakeplugin", fmt.Sprintf(
 		`{"version":1,"httpServers":{"jobs":{"command":%q,"env":{"PLUGINHOST_TEST_SERVER":"1"},"healthcheck":{"interval":"50ms","timeout":"10s"}}},"stdioServers":{"cli":{"command":"/bin/cli"}}}`,
-		exe))
+		exe,
+	))
 
 	host := New()
 	entries, err := host.Launch(t.Context(), []string{dir, t.TempDir() /* manifest-less dir is skipped */})
@@ -175,7 +176,8 @@ func TestHostLaunchFailsOnImmediateExit(t *testing.T) {
 
 	dir := writePluginDir(t, "brokenplugin", fmt.Sprintf(
 		`{"version":1,"httpServers":{"srv":{"command":%q,"env":{"PLUGINHOST_TEST_EXIT":"1"}}}}`,
-		exe))
+		exe,
+	))
 
 	host := New()
 	defer host.Shutdown()

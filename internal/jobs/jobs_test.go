@@ -53,19 +53,23 @@ func TestReadChannelStates(t *testing.T) {
 	t.Setenv("XDG_STATE_HOME", t.TempDir())
 	const cid = "00112233445566778899aabbccddeeff"
 
-	writeJournal(t, cid, "build-1",
+	writeJournal(
+		t, cid, "build-1",
 		`{"v":1,"job":"build-1","session":"s","source":"moxy","type":"started","seq":0,"ts":"2026-06-10T10:00:00Z"}`,
 		`{"v":1,"job":"build-1","session":"s","source":"moxy","type":"progress","seq":1,"ts":"2026-06-10T10:00:05Z","message":"compiling"}`,
 	)
-	writeJournal(t, cid, "merge-2",
+	writeJournal(
+		t, cid, "merge-2",
 		`{"v":1,"job":"merge-2","session":"s","source":"spinclass","type":"started","seq":0,"ts":"2026-06-10T09:00:00Z"}`,
 		`{"v":1,"job":"merge-2","session":"s","source":"spinclass","type":"succeeded","seq":1,"ts":"2026-06-10T09:05:00Z","message":"merged","result_ref":"sha256-deadbeef"}`,
 	)
-	writeJournal(t, cid, "note-3",
+	writeJournal(
+		t, cid, "note-3",
 		`{"v":1,"job":"note-3","session":"s","source":"clown","from":"other-session","type":"message","seq":0,"ts":"2026-06-10T08:00:00Z","message":"hello"}`,
 	)
 	// Malformed tail line must not hide the job.
-	writeJournal(t, cid, "broken-4",
+	writeJournal(
+		t, cid, "broken-4",
 		`{"v":1,"job":"broken-4","session":"s","source":"x","type":"started","seq":0,"ts":"2026-06-10T07:00:00Z"}`,
 		`{"v":1,"job":"broken-4","ses`,
 	)
@@ -116,7 +120,8 @@ func TestManagerNudgeWake(t *testing.T) {
 
 	events := m.SubscribeEvents(t.Context())
 
-	writeJournal(t, cid, "job-a",
+	writeJournal(
+		t, cid, "job-a",
 		`{"v":1,"job":"job-a","session":"manager-nudge-wake","source":"test","type":"started","seq":0,"ts":"2026-06-10T10:00:00Z"}`,
 	)
 

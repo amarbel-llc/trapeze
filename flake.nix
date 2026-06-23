@@ -198,13 +198,17 @@
             clownBin ? null,
           }:
           pkgs.writeShellScriptBin "trapeze" ''
-            ${pkgs.lib.optionalString (pluginDirs != "") ''
-              export TRAPEZE_PLUGIN_DIRS="''${TRAPEZE_PLUGIN_DIRS:+$TRAPEZE_PLUGIN_DIRS:}${pluginDirs}"
-            ''}${pkgs.lib.optionalString (clownBin != null) ''
-              export CLOWN_BIN="''${CLOWN_BIN:-${
-                if pkgs.lib.isDerivation clownBin then pkgs.lib.getExe' clownBin "clown" else toString clownBin
-              }}"
-            ''}exec "${trapeze}/bin/trapeze" "$@"
+            ${
+              pkgs.lib.optionalString (pluginDirs != "") ''
+                export TRAPEZE_PLUGIN_DIRS="''${TRAPEZE_PLUGIN_DIRS:+$TRAPEZE_PLUGIN_DIRS:}${pluginDirs}"
+              ''
+            }${
+              pkgs.lib.optionalString (clownBin != null) ''
+                export CLOWN_BIN="''${CLOWN_BIN:-${
+                  if pkgs.lib.isDerivation clownBin then pkgs.lib.getExe' clownBin "clown" else toString clownBin
+                }}"
+              ''
+            }exec "${trapeze}/bin/trapeze" "$@"
           '';
 
         mkTrapezePkg =
