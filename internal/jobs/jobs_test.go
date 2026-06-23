@@ -38,6 +38,31 @@ func TestSessionKeyPrecedence(t *testing.T) {
 	require.NotEqual(t, generated, SessionKey(), "unset env must generate fresh keys")
 }
 
+// shortRuntimeDir points XDG_RUNTIME_DIR at a short-lived directory whose
+// path is short enough to host a unixgram socket, then verifies that the
+// environment actually permits one. The default t.TempDir() is unusable
+// here: under the Nix build sandbox on darwin it nests deeply enough that
+// SocketPath overflows the 104-byte sun_path limit, so bind/connect fail
+// with EINVAL. We root the dir directly under the system temp dir (no
+// per-test name nesting) to stay under the limit. When even that cannot
+// bind a unixgram socket — a too-deep sandbox $TMPDIR, or one that forbids
+// unixgram outright — the test is skipped rather than failed; production
+// already degrades to polling in that case.
+func shortRuntimeDir(t *testing.T, cid string) {
+	t.Helper()
+	dir, err := os.MkdirTemp("", "tj")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	t.Setenv("XDG_RUNTIME_DIR", dir)
+
+	probe, err := net.ListenUnixgram("unixgram", &net.UnixAddr{Name: SocketPath(cid), Net: "unixgram"})
+	if err != nil {
+		t.Skipf("unixgram sockets unavailable in this environment: %v", err)
+	}
+	_ = probe.Close()
+	_ = os.Remove(SocketPath(cid))
+}
+
 func writeJournal(t *testing.T, cid, job string, lines ...string) {
 	t.Helper()
 	dir := JournalDir(cid)
@@ -107,11 +132,11 @@ func TestReadChannelStatesMissingDir(t *testing.T) {
 
 func TestManagerNudgeWake(t *testing.T) {
 	t.Setenv("XDG_STATE_HOME", t.TempDir())
-	t.Setenv("XDG_RUNTIME_DIR", t.TempDir())
 	t.Setenv("CLOWN_SESSION_ID", "manager-nudge-wake")
 	t.Setenv("CLOWN_DISABLE_JOB_WAKEUP", "")
 
 	cid := ChannelID("manager-nudge-wake")
+	shortRuntimeDir(t, cid)
 
 	m := NewManager(nil)
 	m.Start(t.Context())
@@ -169,8 +194,8 @@ func TestManagerExportsSessionKey(t *testing.T) {
 }
 
 func TestBindNudgeRespectsLiveOwner(t *testing.T) {
-	t.Setenv("XDG_RUNTIME_DIR", t.TempDir())
 	const cid = "aaaabbbbccccddddeeeeffff00001111"
+	shortRuntimeDir(t, cid)
 
 	// Simulate clown's job-watch monitor owning the socket.
 	owner, err := net.ListenUnixgram("unixgram", &net.UnixAddr{Name: SocketPath(cid), Net: "unixgram"})
@@ -190,8 +215,8 @@ func TestBindNudgeRespectsLiveOwner(t *testing.T) {
 }
 
 func TestBindNudgeReclaimsStaleSocket(t *testing.T) {
-	t.Setenv("XDG_RUNTIME_DIR", t.TempDir())
 	const cid = "aaaabbbbccccddddeeeeffff00002222"
+	shortRuntimeDir(t, cid)
 
 	// A crashed monitor leaves the socket file behind with no listener.
 	require.NoError(t, os.MkdirAll(filepath.Dir(SocketPath(cid)), 0o700))
