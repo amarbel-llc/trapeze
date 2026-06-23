@@ -130,7 +130,7 @@ func (h *Host) Launch(ctx context.Context, pluginDirs []string) ([]Entry, error)
 func (h *Host) launchHTTP(ctx context.Context, plugin, server string, def ServerDef) (Entry, error) {
 	label := plugin + "/" + server
 
-	cmd := exec.Command(def.Command, def.Args...)
+	cmd := exec.CommandContext(ctx, def.Command, def.Args...)
 	cmd.Env = os.Environ()
 	for k, v := range def.Env {
 		cmd.Env = append(cmd.Env, k+"="+v)

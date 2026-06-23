@@ -1,6 +1,7 @@
 package pluginhost
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -32,7 +33,7 @@ func TestMain(m *testing.M) {
 }
 
 func runFakeServer() {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	ln, err := (&net.ListenConfig{}).Listen(context.Background(), "tcp", "127.0.0.1:0")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "fake server:", err)
 		os.Exit(1)
