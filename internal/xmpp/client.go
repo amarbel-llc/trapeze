@@ -70,18 +70,15 @@ type Client struct {
 	session *xmpp.Session
 }
 
-// Connect dials and negotiates an XMPP client session for userJID, sends
-// initial available presence, and starts serving incoming stanzas in a
-// background goroutine. Incoming chat messages are forwarded to onIncoming.
-//
-// server is an optional "host:port" override for the TCP dial; when empty,
-// mellium resolves the server from the JID's domain (SRV records). insecureTLS
-// skips certificate verification — needed for local servers with self-signed
-// certs (e.g. a dev Prosody), and a security footgun anywhere else.
-func Connect(ctx context.Context, userJID, password, server string, insecureTLS bool, onIncoming IncomingHandler) (*Client, error) {
+// negotiateSession dials and negotiates an XMPP client-to-server session for
+// userJID, returning the live session and the parsed JID. It is the shared
+// transport setup behind both Connect (1:1 chat) and ConnectMUC (group chat):
+// StartTLS, SASL (SCRAM preferred, PLAIN fallback), and resource binding, with
+// an optional "host:port" dial override and a dev-only insecure-TLS escape.
+func negotiateSession(ctx context.Context, userJID, password, server string, insecureTLS bool) (*xmpp.Session, jid.JID, error) {
 	addr, err := jid.Parse(userJID)
 	if err != nil {
-		return nil, fmt.Errorf("parse jid %q: %w", userJID, err)
+		return nil, jid.JID{}, fmt.Errorf("parse jid %q: %w", userJID, err)
 	}
 
 	tlsCfg := &tls.Config{
@@ -103,14 +100,30 @@ func Connect(ctx context.Context, userJID, password, server string, insecureTLS 
 	if server != "" {
 		conn, derr := new(net.Dialer).DialContext(ctx, "tcp", server)
 		if derr != nil {
-			return nil, fmt.Errorf("dial %q: %w", server, derr)
+			return nil, jid.JID{}, fmt.Errorf("dial %q: %w", server, derr)
 		}
 		session, err = xmpp.NewClientSession(ctx, addr, conn, features...)
 	} else {
 		session, err = xmpp.DialClientSession(ctx, addr, features...)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("negotiate xmpp session: %w", err)
+		return nil, jid.JID{}, fmt.Errorf("negotiate xmpp session: %w", err)
+	}
+	return session, addr, nil
+}
+
+// Connect dials and negotiates an XMPP client session for userJID, sends
+// initial available presence, and starts serving incoming stanzas in a
+// background goroutine. Incoming chat messages are forwarded to onIncoming.
+//
+// server is an optional "host:port" override for the TCP dial; when empty,
+// mellium resolves the server from the JID's domain (SRV records). insecureTLS
+// skips certificate verification — needed for local servers with self-signed
+// certs (e.g. a dev Prosody), and a security footgun anywhere else.
+func Connect(ctx context.Context, userJID, password, server string, insecureTLS bool, onIncoming IncomingHandler) (*Client, error) {
+	session, addr, err := negotiateSession(ctx, userJID, password, server, insecureTLS)
+	if err != nil {
+		return nil, err
 	}
 
 	c := &Client{session: session}
