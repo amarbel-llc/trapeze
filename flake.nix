@@ -160,7 +160,7 @@
 
           meta = {
             description = "Terminal-based AI coding agent (fork of charmbracelet/crush)";
-            homepage = "https://github.com/amarbel-llc/trapeze";
+            homepage = "https://code.linenisgreat.com/trapeze";
             license = pkgs.lib.licenses.mit;
             mainProgram = "trapeze";
           };

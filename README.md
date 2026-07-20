@@ -1,7 +1,7 @@
 # Trapeze
 
 <p align="center">
-    <a href="https://github.com/amarbel-llc/trapeze/releases"><img src="https://img.shields.io/github/release/amarbel-llc/trapeze" alt="Latest Release"></a>
+    <a href="https://code.linenisgreat.com/trapeze/releases"><img src="https://img.shields.io/github/release/amarbel-llc/trapeze" alt="Latest Release"></a>
 </p>
 
 <p align="center">Your new coding bestie, now available in your favourite terminal.<br />Your tools, your code, and your workflows, wired into your LLM of choice.</p>
@@ -34,7 +34,7 @@ Or, download it:
 - [Packages][releases] are available in Debian and RPM formats
 - [Binaries][releases] are available for Linux, macOS, Windows, FreeBSD, OpenBSD, and NetBSD
 
-[releases]: https://github.com/amarbel-llc/trapeze/releases
+[releases]: https://code.linenisgreat.com/trapeze/releases
 
 Or just install it with Go:
 
