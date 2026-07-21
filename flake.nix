@@ -7,9 +7,12 @@
     # mkGoPkgs / mkGoEnv. Importing it directly (not via overlays on upstream
     # nixpkgs) is required — re-applying gomod2nix's upstream overlay would
     # shadow the patched builder. Matches tommy/moxy/maneater.
-    igloo.url = "github:amarbel-llc/igloo";
+    igloo.url = "https://code.linenisgreat.com/igloo/archive/master.tar.gz";
+    igloo.inputs.nixpkgs-master.follows = "nixpkgs-master";
+    igloo.inputs.treefmt-nix.follows = "treefmt-nix";
     nixpkgs-master.url = "github:NixOS/nixpkgs/567a49d1913ce81ac6e9582e3553dd90a955875f";
     utils.url = "https://flakehub.com/f/numtide/flake-utils/0.1.102";
+    utils.inputs.systems.follows = "igloo/systems";
 
     # trapeze's go.mod requires a newer Go patch than the eng-pinned
     # nixpkgs-master ships (it has go_1_26 = 1.26.2; we need >= 1.26.3). This
@@ -33,7 +36,7 @@
     # 0001). Runs the formatters from the generated treefmt config plus
     # trapeze's own [linter.*] sections under one `conformist check` gate.
     conformist = {
-      url = "github:amarbel-llc/conformist";
+      url = "https://code.linenisgreat.com/conformist/archive/master.tar.gz";
       inputs.igloo.follows = "igloo";
       inputs.nixpkgs-master.follows = "nixpkgs-master";
       inputs.utils.follows = "utils";
