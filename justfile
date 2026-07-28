@@ -11,6 +11,8 @@
 # fantasy requirement, so the host-side `build-go` / `test-go` / `lint-go` /
 # `run-dev` loops DO NOT WORK until go 1.26.4 is packaged. Use the `-nix`
 # lanes meanwhile.
+#
+# validate, build, and test — the full nix gate
 default: validate build test
 
 # Current nix system double (e.g. aarch64-darwin), used to address
@@ -29,6 +31,8 @@ test: test-go-nix test-lint-nix
 
 # Schema-validate the flake and build every checks.${system}.* output
 # (conformist, go-test, go-vet, go-lint). This is the pre-merge gate.
+#
+# schema-validate the flake and build every checks.${system}.* output
 [group('pre-build')]
 validate-nix:
   nix flake check --show-trace --print-build-logs
@@ -37,6 +41,8 @@ validate-nix:
 # which runs every formatter (drift check) plus the log-capitalization linter
 # and exits non-zero on any finding, with no working-tree side effects.
 # Write-mode counterpart: codemod-fmt (`nix fmt`).
+#
+# check formatting and the log-capitalization linter
 [group('pre-build')]
 lint-fmt:
   nix build --print-build-logs --no-link ".#checks.{{system}}.conformist"
@@ -44,6 +50,8 @@ lint-fmt:
 # Go static analysis via golangci-lint in the devshell (fast loop). Config:
 # ./.golangci.yml. The hermetic equivalent (go-lint) runs inside `nix flake
 # check`.
+#
+# run golangci-lint in the devshell
 [group('pre-build')]
 lint-go:
   GOLANGCI_LINT_CACHE='{{ justfile_directory() }}/.tmp/golangci-lint' golangci-lint run --config .golangci.yml --timeout 10m ./...
@@ -61,6 +69,8 @@ build-go:
 
 # Regenerate the sqlc query/model code under internal/db from
 # internal/db/{migrations,sql}. Config: ./sqlc.yaml.
+#
+# regenerate the sqlc query/model code under internal/db
 [group('build')]
 build-sqlc:
   sqlc generate
@@ -72,6 +82,8 @@ build-schema:
 
 # Regenerate the OpenAPI spec under internal/swagger from the swag annotations
 # on the server handlers + main.go.
+#
+# regenerate the OpenAPI spec under internal/swagger
 [group('build')]
 build-swagger:
   go run github.com/swaggo/swag/cmd/swag@v1.16.6 init --generalInfo main.go --dir . --output internal/swagger --packageName swagger --parseDependency --parseInternal --parseDepth 5
@@ -86,6 +98,8 @@ build-hyper:
 # Go unit tests in the nix sandbox (the buildGoApplication checkPhase runs
 # `go test` over everything except ./internal/agent). --rebuild forces
 # re-execution even when the store path is cached; -L streams test logs.
+#
+# run the Go unit tests in the nix sandbox
 [group('post-build')]
 test-go-nix:
   nix build -L --rebuild --no-link ".#checks.{{system}}.go-test"
@@ -101,6 +115,8 @@ test-lint-nix:
 # the sandbox's store-linked coreutils), this devshell lane KEEPS
 # internal/shell — that test runs fine against the host's real PATH.
 # `just test-go ./internal/config/` narrows to one package.
+#
+# run the devshell Go test loop (-race), excluding the agent suite
 [group('post-build')]
 test-go pkgs='./...':
   go test -race -failfast $(go list {{pkgs}} | grep -vE '/internal/agent($|/)')
@@ -109,6 +125,8 @@ test-go pkgs='./...':
 # cassettes in internal/agent/testdata; needs TRAPEZE_HYPER_API_KEY only when
 # re-recording (see test-record). Excluded from the nix gate; see
 # trapeze#agent-test-lane.
+#
+# run the VCR-cassette agent suite in the devshell
 [group('post-build')]
 test-agent run='.':
   go test -run '{{run}}' ./internal/agent/...
@@ -117,6 +135,8 @@ test-agent run='.':
 
 # Format the whole tree in place via conformist (`nix fmt`): goimports +
 # gofumpt, nixfmt, shfmt, prettier. Read-only counterpart: lint-fmt.
+#
+# format the whole tree in place via `nix fmt`
 [group('codemod')]
 codemod-fmt *args:
   nix fmt {{args}}
@@ -127,6 +147,8 @@ codemod-fmt *args:
 # build's vendored module set stays in sync. Prefers the devshell's gomod2nix;
 # falls back to the igloo-pinned package via `nix run` so it also works during
 # bootstrap, before the new devshell is active.
+#
+# regenerate gomod2nix.toml
 [group('maintenance')]
 update-gomod2nix:
   #!/usr/bin/env bash
@@ -139,6 +161,8 @@ update-gomod2nix:
 
 # Re-record the VCR cassettes for the agent suite (hits hyper.charm.land — set
 # TRAPEZE_HYPER_API_KEY first). Mirrors the old Taskfile `test:record`.
+#
+# re-record the VCR cassettes for the agent suite
 [group('maintenance')]
 update-cassettes:
   rm -rf internal/agent/testdata
@@ -159,6 +183,8 @@ bump-version new_version:
 
 # Create a signed git tag for the current trapezeVersion and push it to origin.
 # Release artifacts are built by goreleaser (.goreleaser.yml) off the tag.
+#
+# create a signed git tag for the current trapezeVersion and push it
 [group('maintenance')]
 deploy-tag:
   #!/usr/bin/env bash
