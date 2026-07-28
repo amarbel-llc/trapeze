@@ -62,7 +62,9 @@ lint-go:
 build-nix:
   nix build --show-trace --print-build-logs
 
-# Fast devshell build (no nix sandbox). Output binary: ./trapeze.
+# Output binary: ./trapeze.
+#
+# fast devshell build (no nix sandbox)
 [group('build')]
 build-go:
   go build -o trapeze .
@@ -75,7 +77,7 @@ build-go:
 build-sqlc:
   sqlc generate
 
-# Regenerate schema.json (the config JSON schema) from the running binary.
+# regenerate schema.json (the config JSON schema) from the running binary
 [group('build')]
 build-schema:
   go run . schema > schema.json
@@ -88,7 +90,7 @@ build-schema:
 build-swagger:
   go run github.com/swaggo/swag/cmd/swag@v1.16.6 init --generalInfo main.go --dir . --output internal/swagger --packageName swagger --parseDependency --parseInternal --parseDepth 5
 
-# Regenerate the embedded Hyper provider.json (internal/agent/hyper).
+# regenerate the embedded Hyper provider.json (internal/agent/hyper)
 [group('build')]
 build-hyper:
   go generate ./internal/agent/hyper/...
@@ -104,7 +106,7 @@ build-hyper:
 test-go-nix:
   nix build -L --rebuild --no-link ".#checks.{{system}}.go-test"
 
-# golangci-lint in the nix sandbox.
+# run golangci-lint in the nix sandbox
 [group('post-build')]
 test-lint-nix:
   nix build -L --no-link ".#checks.{{system}}.go-lint"
@@ -168,7 +170,7 @@ update-cassettes:
   rm -rf internal/agent/testdata
   go test -v -count=1 -timeout=1h ./internal/agent
 
-# Bump the trapezeVersion string in flake.nix.
+# bump the trapezeVersion string in flake.nix
 [group('maintenance')]
 bump-version new_version:
   #!/usr/bin/env bash
@@ -202,12 +204,14 @@ deploy-tag:
 
 # === run ===
 
-# Run the freshly-built binary (devshell, no nix). Pass args after `--`.
+# Pass args after `--`.
+#
+# run the freshly-built binary (devshell, no nix)
 [group('run')]
 run-dev *args:
   go run . {{args}}
 
-# Run with pprof profiling enabled (serves localhost:6060).
+# run with pprof profiling enabled (serves localhost:6060)
 [group('run')]
 run-profile *args:
   TRAPEZE_PROFILE=true go run . {{args}}
